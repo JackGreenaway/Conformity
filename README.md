@@ -43,7 +43,7 @@ X_test = np.random.rand(10, 1)
 
 # Initialize and fit the regressor
 regressor = ConformalRegressor(estimator=LinearRegression())
-regressor.estimator.fit(X_train, y_train)
+regressor.fit(X_train, y_train)
 
 # Calibrate the model
 regressor.calibrate(X_train, y_train)
@@ -67,7 +67,7 @@ X_test = np.random.rand(10, 5)
 
 # Initialize and fit the classifier
 classifier = ConformalClassifier(estimator=RandomForestClassifier())
-classifier.estimator.fit(X_train, y_train)
+classifier.fit(X_train, y_train)
 
 # Calibrate the model
 classifier.calibrate(X_train, y_train)
