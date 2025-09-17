@@ -32,11 +32,12 @@ from conformity.classifier import ConformalClassifier
 
 ### Example: Conformal Regressor
 ```python
+import numpy as np
 from pprint import pprint
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
+
 from conformity.regressor import ConformalRegressor
-import numpy as np
 
 np.random.seed(434)
 
@@ -101,12 +102,13 @@ array([[-0.30307492,  1.5221755 ],
 
 ### Example: Conformal Classifier
 ```python
+import numpy as np
 from pprint import pprint
 from sklearn.datasets import make_classification
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
+
 from conformity.classifier import ConformalClassifier
-import numpy as np
 
 np.random.seed(345)
 
