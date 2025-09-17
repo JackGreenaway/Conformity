@@ -26,57 +26,147 @@ Before using this repository, ensure you have the following installed:
 ### Running the Project
 To use the library, you can import the modules and classes in your Python scripts. For example:
 ```python
-from conformity.regression import ConformalRegressor
+from conformity.regressor import ConformalRegressor
 from conformity.classifier import ConformalClassifier
 ```
 
 ### Example: Conformal Regressor
 ```python
+from pprint import pprint
 from sklearn.linear_model import LinearRegression
-from conformity.regression import ConformalRegressor
+from sklearn.model_selection import train_test_split
+from conformity.regressor import ConformalRegressor
 import numpy as np
 
+np.random.seed(434)
+
 # Generate synthetic data
-X_train = np.random.rand(100, 1)
-y_train = 3 * X_train.squeeze() + np.random.randn(100) * 0.5
-X_test = np.random.rand(10, 1)
+n_samples = 60
+
+x = np.random.rand(n_samples, 1)
+y = 3 * x.squeeze() + np.random.randn(n_samples) * 0.5
+
+# Create train, calib, and test sets
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2, shuffle=True)
+X_train, X_calib, y_train, y_calib = train_test_split(
+    X_train, y_train, test_size=0.3, shuffle=True
+)
 
 # Initialize and fit the regressor
 regressor = ConformalRegressor(estimator=LinearRegression())
 regressor.fit(X_train, y_train)
 
 # Calibrate the model
-regressor.calibrate(X_train, y_train)
+regressor.calibrate(X_calib, y_calib)
 
 # Make predictions with prediction intervals
 y_pred, intervals, q_level = regressor.predict(X_test, alpha=0.1)
-print("Predictions:", y_pred)
-print("Prediction Intervals:", intervals)
+
+print("Predictions:")
+pprint(y_pred.reshape(-1, 1))
+
+print("\nPrediction Intervals:")
+pprint(intervals)
+```
+
+```
+Predictions:
+array([[0.60955029],
+       [2.61894793],
+       [2.04560376],
+       [1.93151949],
+       [0.76095551],
+       [1.22316527],
+       [1.1236354 ],
+       [0.76920256],
+       [1.42267417],
+       [1.8192274 ],
+       [2.02299972],
+       [0.59338968]])
+
+Prediction Intervals:
+array([[-0.30307492,  1.5221755 ],
+       [ 1.70632272,  3.53157314],
+       [ 1.13297854,  2.95822897],
+       [ 1.01889428,  2.8441447 ],
+       [-0.1516697 ,  1.67358072],
+       [ 0.31054006,  2.13579048],
+       [ 0.21101019,  2.03626061],
+       [-0.14342265,  1.68182777],
+       [ 0.51004896,  2.33529938],
+       [ 0.90660219,  2.73185262],
+       [ 1.11037451,  2.93562493],
+       [-0.31923553,  1.50601489]])
 ```
 
 ### Example: Conformal Classifier
 ```python
+from pprint import pprint
+from sklearn.datasets import make_classification
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 from conformity.classifier import ConformalClassifier
 import numpy as np
 
+np.random.seed(345)
+
 # Generate synthetic data
-X_train = np.random.rand(100, 5)
-y_train = np.random.randint(0, 3, size=100)
-X_test = np.random.rand(10, 5)
+n_samples = 200
+
+x, y = make_classification(
+    n_samples=n_samples, n_features=5, n_clusters_per_class=1, n_classes=3
+)
+
+# Create train, calib, and test sets
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.05, shuffle=True)
+X_train, X_calib, y_train, y_calib = train_test_split(
+    X_train, y_train, test_size=0.3, shuffle=True
+)
+
 
 # Initialize and fit the classifier
 classifier = ConformalClassifier(estimator=RandomForestClassifier())
 classifier.fit(X_train, y_train)
 
 # Calibrate the model
-classifier.calibrate(X_train, y_train)
+classifier.calibrate(X_calib, y_calib)
 
 # Make predictions with prediction sets
 pred_set, boolean_set, y_prob, q_level = classifier.predict(X_test, alpha=0.1)
-print("Prediction Sets:", pred_set)
-print("Boolean Set:", boolean_set)
+
+print("Prediction Sets:")
+pprint(pred_set)
+
+print("\nBoolean Set:")
+pprint(boolean_set)
 ```
+
+```
+Prediction Sets:
+array([[ 0., nan, nan],
+       [nan,  1., nan],
+       [nan, nan,  2.],
+       [nan,  1., nan],
+       [ 0., nan, nan],
+       [ 0., nan, nan],
+       [ 0., nan, nan],
+       [ 0., nan, nan],
+       [nan,  1., nan],
+       [nan,  1., nan]])
+
+Boolean Set:
+array([[ True, False, False],
+       [False,  True, False],
+       [False, False,  True],
+       [False,  True, False],
+       [ True, False, False],
+       [ True, False, False],
+       [ True, False, False],
+       [ True, False, False],
+       [False,  True, False],
+       [False,  True, False]])
+```
+
 
 ### Development
 For development purposes, install the `dev` dependencies:
