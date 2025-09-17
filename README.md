@@ -26,14 +26,14 @@ Before using this repository, ensure you have the following installed:
 ### Running the Project
 To use the library, you can import the modules and classes in your Python scripts. For example:
 ```python
-from src.conformity.regression import ConformalRegressor
-from src.conformity.classifier import ConformalClassifier
+from conformity.regression import ConformalRegressor
+from conformity.classifier import ConformalClassifier
 ```
 
 ### Example: Conformal Regressor
 ```python
 from sklearn.linear_model import LinearRegression
-from src.conformity.regression import ConformalRegressor
+from conformity.regression import ConformalRegressor
 import numpy as np
 
 # Generate synthetic data
@@ -57,7 +57,7 @@ print("Prediction Intervals:", intervals)
 ### Example: Conformal Classifier
 ```python
 from sklearn.ensemble import RandomForestClassifier
-from src.conformity.classifier import ConformalClassifier
+from conformity.classifier import ConformalClassifier
 import numpy as np
 
 # Generate synthetic data

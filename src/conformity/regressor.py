@@ -25,7 +25,6 @@ class ConformalRegressor(BaseConformalPredictor):
             self.calibration_non_conformity,
             np.ceil((self.n_calib + 1) * (1 - alpha)) / self.n_calib,
         )
-
         y_pred_lower = y_pred - y_pred_q_level
         y_pred_higher = y_pred + y_pred_q_level
 

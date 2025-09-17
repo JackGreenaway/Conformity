@@ -1,7 +1,6 @@
 from sklearn.base import BaseEstimator
 from numpy.typing import ArrayLike
 
-
 class BaseConformalPredictor:
     def __init__(self):
         pass

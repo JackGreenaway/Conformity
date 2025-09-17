@@ -36,7 +36,6 @@ class ConformalClassifier(BaseConformalPredictor):
         q_level = np.ceil((self.n_calib + 1) * (1 - alpha)) / self.n_calib
         
         boolean_set = conformity_score > (1 - q_level)
-        
         pred_set = np.where(
             boolean_set, np.vstack([self.estimator.classes_] * X.shape[0]), np.nan
         )
