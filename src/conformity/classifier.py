@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 from src.conformity.base import BaseConformalPredictor
 from sklearn.base import ClassifierMixin
 from numpy.typing import ArrayLike
@@ -7,22 +8,30 @@ from typing import Self
 
 class ConformalClassifier(BaseConformalPredictor):
     def __init__(self, estimator: ClassifierMixin) -> None:
-        super().__init__()
+        super().__init__(estimator=estimator)  # type: ignore
 
         self.estimator = estimator
 
     def calibrate(self, X: ArrayLike, y: ArrayLike) -> Self:
-        y_prob = self.estimator.predict_proba(X)  # type: ignore[attr-defined]
+        if self.is_calibrated_:
+            warnings.warn("Estimator is already calibrated")
+
+        y_prob = self.estimator_.predict_proba(X)  # type: ignore[attr-defined]
 
         true_probs = y_prob[np.arange(y_prob.shape[0]), y]
 
         self.calibration_non_conformity = 1 - true_probs
         self.n_calib = self.calibration_non_conformity.shape[0]
 
+        self.is_calibrated_ = True
+
         return self
 
-    def predict(self, X: ArrayLike, alpha: float = 0.05) -> ArrayLike:
-        y_prob = self.estimator.predict_proba(X)  # type: ignore[attr-defined]
+    def predict(self, X: ArrayLike, alpha: float = 0.05) -> tuple:
+        if not self.is_calibrated_:
+            raise RuntimeError("Estimator has not been calibrated")
+
+        y_prob = self.estimator_.predict_proba(X)  # type: ignore[attr-defined]
 
         non_conformity = 1 - y_prob
 

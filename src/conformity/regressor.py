@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 from src.conformity.base import BaseConformalPredictor
 from sklearn.base import RegressorMixin
 from numpy.typing import ArrayLike
@@ -7,20 +8,26 @@ from typing import Self
 
 class ConformalRegressor(BaseConformalPredictor):
     def __init__(self, estimator: RegressorMixin) -> None:
-        super().__init__()
-
-        self.estimator = estimator
+        super().__init__(estimator=estimator)  # type: ignore
 
     def calibrate(self, X: ArrayLike, y: ArrayLike) -> Self:
-        y_pred = self.estimator.predict(X)  # type: ignore[attr-defined]
+        if self.is_calibrated_:
+            warnings.warn("Estimator is already calibrated")
+
+        y_pred = self.estimator_.predict(X)  # type: ignore[attr-defined]
 
         self.calibration_non_conformity = np.abs(y - y_pred)
         self.n_calib = self.calibration_non_conformity.shape[0]
 
+        self.is_calibrated_ = True
+
         return self
 
-    def predict(self, X: ArrayLike, alpha: float = 0.05) -> ArrayLike:
-        y_pred = self.estimator.predict(X)  # type: ignore[attr-defined]
+    def predict(self, X: ArrayLike, alpha: float = 0.05) -> tuple:
+        if not self.is_calibrated_:
+            raise RuntimeError("Estimator has not been calibrated")
+
+        y_pred = self.estimator_.predict(X)  # type: ignore[attr-defined]
 
         y_pred_q_level = np.quantile(
             self.calibration_non_conformity,
