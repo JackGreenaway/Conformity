@@ -25,10 +25,25 @@ class ConformalClassifier(BaseConformalPredictor):
         self.estimator = estimator
 
     def calibrate(self, X: ArrayLike, y: ArrayLike) -> Self:
+        """
+        Calibrate the conformal classifier using the provided calibration data.
+
+        Parameters
+        ----------
+        X : ArrayLike
+            Calibration features.
+        y : ArrayLike
+            Calibration targets.
+
+        Returns
+        -------
+        Self
+            The instance of the conformal classifier.
+        """
         if self.is_calibrated_:
             warnings.warn("Estimator is already calibrated")
 
-        y_prob = self.estimator_.predict_proba(X)  # type: ignore[attr-defined]
+        y_prob = self.estimator_.predict_proba(X)
 
         true_probs = y_prob[np.arange(y_prob.shape[0]), y]
 
@@ -40,10 +55,25 @@ class ConformalClassifier(BaseConformalPredictor):
         return self
 
     def predict(self, X: ArrayLike, alpha: float = 0.05) -> tuple:
+        """
+        Make predictions with prediction sets.
+
+        Parameters
+        ----------
+        X : ArrayLike
+            Features for which to make predictions.
+        alpha : float, optional
+            Significance level for the prediction sets (default is 0.05).
+
+        Returns
+        -------
+        tuple
+            A tuple containing the predicted sets, boolean indicators, predicted probabilities, and quantile level.
+        """
         if not self.is_calibrated_:
             raise RuntimeError("Estimator has not been calibrated")
 
-        y_prob = self.estimator_.predict_proba(X)  # type: ignore[attr-defined]
+        y_prob = self.estimator_.predict_proba(X)
 
         non_conformity = 1 - y_prob
 

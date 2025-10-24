@@ -6,7 +6,27 @@ from typing import Self
 
 
 class BaseConformalPredictor(ABC):
+    """
+    Abstract base class for conformal predictors.
+
+    This class provides the interface for conformal predictors, which can be used
+    for both regression and classification tasks.
+
+    Parameters
+    ----------
+    estimator : BaseEstimator
+        The base estimator to be wrapped by the conformal predictor.
+    """
+
     def __init__(self, estimator: BaseEstimator) -> None:
+        """
+        Initialise the conformal predictor with a base estimator.
+
+        Parameters
+        ----------
+        estimator : BaseEstimator
+            The base estimator to be used for conformal prediction.
+        """
         self.base_estimator = estimator
         self.is_calibrated_ = False
 
@@ -17,6 +37,25 @@ class BaseConformalPredictor(ABC):
         auto_calibrate: bool = False,
         tts_kwargs: dict = {},
     ) -> Self:
+        """
+        Fit the conformal predictor to the training data.
+
+        Parameters
+        ----------
+        X : ArrayLike
+            Training features.
+        y : ArrayLike
+            Training targets.
+        auto_calibrate : bool, optional
+            Whether to automatically calibrate the model after fitting (default is False).
+        tts_kwargs : dict, optional
+            Additional arguments for train-test split.
+
+        Returns
+        -------
+        Self
+            The instance of the conformal predictor.
+        """
         if auto_calibrate:
             X_train, X_calib, y_train, y_calib = train_test_split(X, y, **tts_kwargs)
 

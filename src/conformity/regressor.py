@@ -23,10 +23,25 @@ class ConformalRegressor(BaseConformalPredictor):
         super().__init__(estimator=estimator)  # type: ignore
 
     def calibrate(self, X: ArrayLike, y: ArrayLike) -> Self:
+        """
+        Calibrate the conformal regressor using the provided calibration data.
+
+        Parameters
+        ----------
+        X : ArrayLike
+            Calibration features.
+        y : ArrayLike
+            Calibration targets.
+
+        Returns
+        -------
+        Self
+            The instance of the conformal regressor.
+        """
         if self.is_calibrated_:
             warnings.warn("Estimator is already calibrated")
 
-        y_pred = self.estimator_.predict(X)  # type: ignore[attr-defined]
+        y_pred = self.estimator_.predict(X)
 
         self.calibration_non_conformity = np.abs(y - y_pred)
         self.n_calib = self.calibration_non_conformity.shape[0]
@@ -36,10 +51,25 @@ class ConformalRegressor(BaseConformalPredictor):
         return self
 
     def predict(self, X: ArrayLike, alpha: float = 0.05) -> tuple:
+        """
+        Make predictions with prediction intervals.
+
+        Parameters
+        ----------
+        X : ArrayLike
+            Features for which to make predictions.
+        alpha : float, optional
+            Significance level for the prediction intervals (default is 0.05).
+
+        Returns
+        -------
+        tuple
+            A tuple containing the predicted values, prediction intervals, and quantile level.
+        """
         if not self.is_calibrated_:
             raise RuntimeError("Estimator has not been calibrated")
 
-        y_pred = self.estimator_.predict(X)  # type: ignore[attr-defined]
+        y_pred = self.estimator_.predict(X)  # type: ignore
 
         y_pred_q_level = np.quantile(
             self.calibration_non_conformity,
