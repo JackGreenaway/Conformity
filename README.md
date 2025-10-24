@@ -5,7 +5,6 @@ Conformity is a Python library designed to provide conformal prediction tools fo
 ## Prerequisites
 
 Before using this repository, ensure you have the following installed:
-- [Python 3.11](https://www.python.org/downloads/)
 - [UV](https://uv.pm/) (for package management)
 
 ## Installation
@@ -20,6 +19,11 @@ Before using this repository, ensure you have the following installed:
    ```bash
    uv install
    ```
+   or
+   ```bash
+   uv sync
+   ```
+   
 
 ## Usage
 
@@ -42,7 +46,7 @@ from conformity.regressor import ConformalRegressor
 np.random.seed(434)
 
 # Generate synthetic data
-n_samples = 60
+n_samples = 500
 
 x = np.random.rand(n_samples, 1)
 y = 3 * x.squeeze() + np.random.randn(n_samples) * 0.5
@@ -61,43 +65,63 @@ regressor.fit(X_train, y_train)
 regressor.calibrate(X_calib, y_calib)
 
 # Make predictions with prediction intervals
-y_pred, intervals, q_level = regressor.predict(X_test, alpha=0.1)
+y_pred, intervals, q_level = regressor.predict(X_test, alpha=0.05)
 
 print("Predictions:")
-pprint(y_pred.reshape(-1, 1))
+pprint(y_pred.reshape(-1, 1)[:5])
 
 print("\nPrediction Intervals:")
-pprint(intervals)
+pprint(intervals[:5])
 ```
 
 ```
 Predictions:
-array([[0.60955029],
-       [2.61894793],
-       [2.04560376],
-       [1.93151949],
-       [0.76095551],
-       [1.22316527],
-       [1.1236354 ],
-       [0.76920256],
-       [1.42267417],
-       [1.8192274 ],
-       [2.02299972],
-       [0.59338968]])
+array([[1.38772709],
+       [0.05650726],
+       [1.24436876],
+       [1.17639525],
+       [2.01712604]])
 
 Prediction Intervals:
-array([[-0.30307492,  1.5221755 ],
-       [ 1.70632272,  3.53157314],
-       [ 1.13297854,  2.95822897],
-       [ 1.01889428,  2.8441447 ],
-       [-0.1516697 ,  1.67358072],
-       [ 0.31054006,  2.13579048],
-       [ 0.21101019,  2.03626061],
-       [-0.14342265,  1.68182777],
-       [ 0.51004896,  2.33529938],
-       [ 0.90660219,  2.73185262],
-       [ 1.11037451,  2.93562493],
-       [-0.31923553,  1.50601489]])
+array([[ 0.46679868,  2.3086555 ],
+       [-0.86442115,  0.97743567],
+       [ 0.32344035,  2.16529717],
+       [ 0.25546684,  2.09732366],
+       [ 1.09619763,  2.93805445]])
+```
+
+#### Model Validation
+
+```python
+from conformity.metrics import (
+    prediction_interval_coverage,
+    prediction_interval_efficiency,
+    prediction_interval_ratio,
+    prediction_interval_mse,
+)
+
+coverage = prediction_interval_coverage(y_true=y_test, prediction_intervals=intervals)
+print(f"Prediction Interval Coverage: {coverage:.03f}")
+
+efficiency = prediction_interval_efficiency(
+    point_prediction=y_pred, prediction_intervals=intervals
+)
+print(f"Prediction Interval Efficiency: {efficiency:.03f}")
+
+ratio = prediction_interval_ratio(
+    point_predictions=y_pred, prediction_intervals=intervals
+)
+print(f"Prediction Interval Ratio: {ratio:.03f}")
+
+mse = prediction_interval_mse(y_true=y_pred, prediction_intervals=intervals)
+print(f"Prediction Interval MSE: {mse[0]}, {mse[1]}")
+```
+
+```
+Prediction Set Coverage: 0.950
+Prediction Set Efficiency: 1.842
+Prediction Set Ratio: 3.758
+Prediction Set MSE: 0.848109134815186, 0.8481091348151861
 ```
 
 ### Example: Conformal Classifier
@@ -110,10 +134,10 @@ from sklearn.model_selection import train_test_split
 
 from conformity.classifier import ConformalClassifier
 
-np.random.seed(345)
+np.random.seed(653)
 
 # Generate synthetic data
-n_samples = 200
+n_samples = 500
 
 x, y = make_classification(
     n_samples=n_samples, n_features=5, n_clusters_per_class=1, n_classes=3
@@ -134,39 +158,46 @@ classifier.fit(X_train, y_train)
 classifier.calibrate(X_calib, y_calib)
 
 # Make predictions with prediction sets
-pred_set, boolean_set, y_prob, q_level = classifier.predict(X_test, alpha=0.1)
+pred_set, boolean_set, y_prob, q_level = classifier.predict(X_test, alpha=0.05)
 
 print("Prediction Sets:")
-pprint(pred_set)
+pprint(pred_set[:5])
 
 print("\nBoolean Set:")
-pprint(boolean_set)
+pprint(boolean_set[:5])
 ```
 
 ```
 Prediction Sets:
-array([[ 0., nan, nan],
-       [nan,  1., nan],
+array([[nan, nan,  2.],
        [nan, nan,  2.],
-       [nan,  1., nan],
-       [ 0., nan, nan],
-       [ 0., nan, nan],
-       [ 0., nan, nan],
-       [ 0., nan, nan],
-       [nan,  1., nan],
-       [nan,  1., nan]])
+       [nan, nan,  2.],
+       [nan, nan,  2.],
+       [ 0., nan, nan]])
 
 Boolean Set:
-array([[ True, False, False],
-       [False,  True, False],
+array([[False, False,  True],
        [False, False,  True],
-       [False,  True, False],
-       [ True, False, False],
-       [ True, False, False],
-       [ True, False, False],
-       [ True, False, False],
-       [False,  True, False],
-       [False,  True, False]])
+       [False, False,  True],
+       [False, False,  True],
+       [ True, False, False]])
+```
+
+#### Model Validation
+
+```python
+from conformity.metrics import prediction_set_coverage, prediction_set_efficiency
+
+coverage = prediction_set_coverage(y_true=y_test, prediction_set=pred_set)
+print(f"Prediction Set Coverage: {coverage:.03f}")
+
+efficiency = prediction_set_efficiency(prediction_set=pred_set)
+print(f"Prediction Set Coverage: {efficiency:.03f}")
+```
+
+```
+Prediction Set Coverage: 0.960
+Prediction Set Efficiency: 0.000
 ```
 
 

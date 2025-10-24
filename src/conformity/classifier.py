@@ -7,6 +7,18 @@ from typing import Self
 
 
 class ConformalClassifier(BaseConformalPredictor):
+    """
+    Conformal classifier for constructing prediction sets using conformal prediction.
+
+    This class wraps a classification estimator and provides calibrated prediction sets
+    with guaranteed coverage under exchangeability.
+
+    Parameters
+    ----------
+    estimator : ClassifierMixin
+        A classification estimator implementing the scikit-learn interface.
+    """
+
     def __init__(self, estimator: ClassifierMixin) -> None:
         super().__init__(estimator=estimator)  # type: ignore
 

@@ -7,6 +7,18 @@ from typing import Self
 
 
 class ConformalRegressor(BaseConformalPredictor):
+    """
+    Conformal regressor for constructing prediction intervals using conformal prediction.
+
+    This class wraps a regression estimator and provides calibrated prediction intervals
+    with guaranteed coverage under exchangeability.
+
+    Parameters
+    ----------
+    estimator : RegressorMixin
+        A regression estimator implementing the scikit-learn interface.
+    """
+
     def __init__(self, estimator: RegressorMixin) -> None:
         super().__init__(estimator=estimator)  # type: ignore
 
