@@ -2,7 +2,7 @@ from sklearn.base import BaseEstimator, clone
 from abc import ABC, abstractmethod
 from numpy.typing import ArrayLike
 from sklearn.model_selection import train_test_split
-from typing import Self
+from typing_extensions import Self
 
 
 class BaseConformalPredictor(ABC):

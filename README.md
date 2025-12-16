@@ -17,10 +17,6 @@ Before using this repository, ensure you have the following installed:
 
 2. Install dependencies using `UV`:
    ```bash
-   uv install
-   ```
-   or
-   ```bash
    uv sync
    ```
    

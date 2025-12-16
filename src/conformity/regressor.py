@@ -1,9 +1,9 @@
 import numpy as np
 import warnings
-from src.conformity.base import BaseConformalPredictor
+from conformity.base import BaseConformalPredictor
 from sklearn.base import RegressorMixin
 from numpy.typing import ArrayLike
-from typing import Self
+from typing_extensions import Self
 
 
 class ConformalRegressor(BaseConformalPredictor):
@@ -71,9 +71,22 @@ class ConformalRegressor(BaseConformalPredictor):
 
         y_pred = self.estimator_.predict(X)  # type: ignore
 
+        quantile = np.ceil((self.n_calib + 1) * (1 - alpha)) / self.n_calib
+
+        # clip quantile if necessary
+        if quantile < 0.0 or quantile > 1.0:
+            clipped_quantile = np.clip(quantile, 0.0, 1.0)
+
+            warnings.warn(
+                f"Quantile value {quantile} was clipped to {clipped_quantile} to fit within [0, 1]. "
+                "This may indicate a very small calibration set, extreme alpha, and/or extreme values."
+            )
+
+            quantile = clipped_quantile
+
         y_pred_q_level = np.quantile(
             self.calibration_non_conformity,
-            np.ceil((self.n_calib + 1) * (1 - alpha)) / self.n_calib,
+            quantile,
         )
         y_pred_lower = y_pred - y_pred_q_level
         y_pred_higher = y_pred + y_pred_q_level

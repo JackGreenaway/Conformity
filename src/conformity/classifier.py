@@ -1,9 +1,9 @@
 import numpy as np
 import warnings
-from src.conformity.base import BaseConformalPredictor
+from conformity.base import BaseConformalPredictor
 from sklearn.base import ClassifierMixin
 from numpy.typing import ArrayLike
-from typing import Self
+from typing_extensions import Self
 
 
 class ConformalClassifier(BaseConformalPredictor):
@@ -22,7 +22,7 @@ class ConformalClassifier(BaseConformalPredictor):
     def __init__(self, estimator: ClassifierMixin) -> None:
         super().__init__(estimator=estimator)  # type: ignore
 
-        self.estimator = estimator
+        # self.estimator = estimator
 
     def calibrate(self, X: ArrayLike, y: ArrayLike) -> Self:
         """
@@ -90,7 +90,7 @@ class ConformalClassifier(BaseConformalPredictor):
         boolean_set = conformity_score > (1 - q_level)
         pred_set = np.where(
             boolean_set,
-            np.vstack([self.estimator.classes_] * X.shape[0]),  # type: ignore[attr-defined]
+            np.vstack([self.estimator_.classes_] * X.shape[0]),  # type: ignore[attr-defined]
             np.nan,
         )
 
