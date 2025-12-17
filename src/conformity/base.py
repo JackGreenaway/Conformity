@@ -1,8 +1,9 @@
-from sklearn.base import BaseEstimator, clone
 from abc import ABC, abstractmethod
 from numpy.typing import ArrayLike
-from sklearn.model_selection import train_test_split
 from typing_extensions import Self
+from sklearn.base import BaseEstimator, clone
+from sklearn.model_selection import train_test_split
+from typing import Dict, Any
 
 
 class BaseConformalPredictor(ABC):
@@ -35,7 +36,7 @@ class BaseConformalPredictor(ABC):
         X: ArrayLike,
         y: ArrayLike,
         auto_calibrate: bool = False,
-        tts_kwargs: dict = {},
+        tts_kwargs: Dict[str, Any] | None = None,
     ) -> Self:
         """
         Fit the conformal predictor to the training data.
@@ -48,8 +49,9 @@ class BaseConformalPredictor(ABC):
             Training targets.
         auto_calibrate : bool, optional
             Whether to automatically calibrate the model after fitting (default is False).
-        tts_kwargs : dict, optional
-            Additional arguments for train-test split.
+        tts_kwargs : dict or None, optional
+            Optional kwargs passed to `sklearn.model_selection.train_test_split` when
+            auto_calibrate=True.
 
         Returns
         -------

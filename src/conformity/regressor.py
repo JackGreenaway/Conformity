@@ -69,6 +69,9 @@ class ConformalRegressor(BaseConformalPredictor):
         if not self.is_calibrated_:
             raise RuntimeError("Estimator has not been calibrated")
 
+        if alpha > 1:
+            raise ValueError(f"Alpha cannot be >= 1. Received {alpha}")
+
         y_pred = self.estimator_.predict(X)  # type: ignore
 
         quantile = np.ceil((self.n_calib + 1) * (1 - alpha)) / self.n_calib
