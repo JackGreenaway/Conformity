@@ -362,7 +362,7 @@ y_pred, intervals, _ = reg.predict(X_new, alpha=0.1)
 - Stores calibration non-conformity scores: $O(n_{\text{calib}})$
 - No other significant overhead
 
-### Optimization Tips
+### Optimisation Tips
 
 1. **Larger calibration sets improve coverage** but require more computation
    - Typical: 20-30% of training data

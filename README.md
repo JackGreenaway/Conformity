@@ -347,7 +347,7 @@ X_train, X_calib, y_train, y_calib = train_test_split(
 )
 
 
-# Initialize and fit the classifier
+# Initialise and fit the classifier
 classifier = ConformalClassifier(estimator=RandomForestClassifier())
 classifier.fit(X_train, y_train)
 

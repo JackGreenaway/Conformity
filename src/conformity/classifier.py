@@ -51,7 +51,7 @@ class ConformalClassifier(BaseConformalPredictor, ClassifierMixin):
 
     def __init__(self, estimator: ClassifierMixin) -> None:
         """
-        Initialize the conformal classifier.
+        Initialise the conformal classifier.
 
         Parameters
         ----------
@@ -99,7 +99,9 @@ class ConformalClassifier(BaseConformalPredictor, ClassifierMixin):
 
         return self
 
-    def predict(self, X: ArrayLike, alpha: float = 0.05) -> Tuple[np.ndarray, np.ndarray]:
+    def predict(
+        self, X: ArrayLike, alpha: float = 0.05
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Make predictions with prediction sets.
 

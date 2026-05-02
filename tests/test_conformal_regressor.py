@@ -42,7 +42,7 @@ def test_predict_interval_shape(synthetic_regression_data):
 
     assert y_pred.shape[0] == X_test.shape[0]
     assert intervals.shape == (X_test.shape[0], 2)
-    assert hasattr(reg, 'q_level_')
+    assert hasattr(reg, "q_level_")
 
 
 def test_predict_without_calibration_raises(synthetic_regression_data):
@@ -377,5 +377,5 @@ def test_predict_returns_correct_types(synthetic_regression_data):
 
     assert isinstance(y_pred, np.ndarray)
     assert isinstance(intervals, np.ndarray)
-    assert hasattr(reg, 'q_level_')
+    assert hasattr(reg, "q_level_")
     assert isinstance(reg.q_level_, (float, np.floating))

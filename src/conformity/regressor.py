@@ -51,7 +51,7 @@ class ConformalRegressor(BaseConformalPredictor, RegressorMixin):
 
     def __init__(self, estimator: RegressorMixin) -> None:
         """
-        Initialize the conformal regressor.
+        Initialise the conformal regressor.
 
         Parameters
         ----------

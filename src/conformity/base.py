@@ -26,12 +26,12 @@ class BaseConformalPredictor(BaseEstimator, ABC):
     estimator_ : BaseEstimator
         The fitted base estimator (set after calling `fit`).
     is_calibrated_ : bool
-        Whether the predictor has been calibrated. Initialized to False.
+        Whether the predictor has been calibrated. Initialised to False.
     """
 
     def __init__(self, estimator: BaseEstimator) -> None:
         """
-        Initialize the conformal predictor with a base estimator.
+        Initialise the conformal predictor with a base estimator.
 
         Parameters
         ----------
