@@ -1,17 +1,39 @@
 [project]
 name = "conformity-calib"
 version = "0.1.0"
-description = "Add your description here"
+description = "Conformal prediction library for regression and classification with statistical uncertainty guarantees"
 readme = "README.md"
 authors = [
     { name = "Jack", email = "jackg18@hotmail.co.uk" }
 ]
 requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = ["conformal-prediction", "uncertainty-quantification", "machine-learning", "regression", "classification"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
 dependencies = [
   "numpy>=2.0.2",
   "scikit-learn>=1.6.1",
   "typing-extensions>=4.15.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/your-username/conformity"
+Documentation = "https://github.com/your-username/conformity#documentation"
+Repository = "https://github.com/your-username/conformity.git"
+Issues = "https://github.com/your-username/conformity/issues"
 
 [build-system]
 requires = ["hatchling"]
@@ -25,5 +47,6 @@ dev = [
   "ipykernel>=6.31.0",
   "matplotlib>=3.9.4",
   "pytest>=8.4.2",
+  "pytest-cov>=6.0.0",
   "ruff>=0.14.9",
 ]
