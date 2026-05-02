@@ -90,11 +90,9 @@ class TestPredictionSetEfficiency:
 
     def test_with_nan_values(self):
         """Test efficiency with NaN values representing empty sets."""
-        prediction_set = np.array([
-            [np.nan, np.nan, np.nan],
-            [0.0, np.nan, np.nan],
-            [0.0, 1.0, 2.0]
-        ])
+        prediction_set = np.array(
+            [[np.nan, np.nan, np.nan], [0.0, np.nan, np.nan], [0.0, 1.0, 2.0]]
+        )
         efficiency = prediction_set_efficiency(prediction_set)
         # Row 0: (0-1)/(3-1) = -0.5; Row 1: (1-1)/(3-1) = 0; Row 2: (3-1)/(3-1) = 1.0
         # Mean = (-0.5 + 0 + 1.0) / 3 = 0.1667
@@ -148,7 +146,9 @@ class TestPredictionIntervalEfficiency:
         """Test relative efficiency normalization."""
         point_pred = np.array([1.0, 2.0, 10.0])
         intervals = np.array([[0.0, 2.0], [1.0, 3.0], [9.0, 11.0]])
-        efficiency = prediction_interval_efficiency(point_pred, intervals, relative=True)
+        efficiency = prediction_interval_efficiency(
+            point_pred, intervals, relative=True
+        )
         expected = (2.0 / 1.0 + 2.0 / 2.0 + 2.0 / 10.0) / 3
         assert efficiency == pytest.approx(expected)
 
@@ -170,7 +170,7 @@ class TestPredictionIntervalRatio:
         intervals = np.array([[0.0, 2.0], [1.0, 3.0], [2.0, 4.0]])
         ratio = prediction_interval_ratio(point_pred, intervals)
         # Ratio is upper_bound / point_pred: (2.0/1.0 + 3.0/2.0 + 4.0/3.0) / 3
-        expected = (2.0 + 1.5 + 4.0/3.0) / 3
+        expected = (2.0 + 1.5 + 4.0 / 3.0) / 3
         assert ratio == pytest.approx(expected)
 
     def test_single_sample(self):

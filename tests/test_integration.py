@@ -23,10 +23,19 @@ class TestMultipleEstimators:
     def test_regressor_with_different_models(self):
         """Test ConformalRegressor with different regression models."""
         X, y = make_regression(n_samples=300, n_features=10, random_state=42)
-        X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
-        X_calib, X_test, y_calib, y_test = train_test_split(X_rest, y_rest, test_size=0.5, random_state=42)
+        X_train, X_rest, y_train, y_rest = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
+        X_calib, X_test, y_calib, y_test = train_test_split(
+            X_rest, y_rest, test_size=0.5, random_state=42
+        )
 
-        for estimator in [LinearRegression(), Ridge(), Lasso(), RandomForestRegressor(n_estimators=10, random_state=42)]:
+        for estimator in [
+            LinearRegression(),
+            Ridge(),
+            Lasso(),
+            RandomForestRegressor(n_estimators=10, random_state=42),
+        ]:
             reg = ConformalRegressor(estimator)
             reg.fit(X_train, y_train)
             reg.calibrate(X_calib, y_calib)
@@ -40,12 +49,16 @@ class TestMultipleEstimators:
     def test_classifier_with_different_models(self):
         """Test ConformalClassifier with different classification models."""
         X, y = make_classification(n_samples=300, n_features=10, random_state=42)
-        X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
-        X_calib, X_test, y_calib, y_test = train_test_split(X_rest, y_rest, test_size=0.5, random_state=42)
+        X_train, X_rest, y_train, y_rest = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
+        X_calib, X_test, y_calib, y_test = train_test_split(
+            X_rest, y_rest, test_size=0.5, random_state=42
+        )
 
         for estimator in [
             LogisticRegression(max_iter=1000, random_state=42),
-            RandomForestClassifier(n_estimators=10, random_state=42)
+            RandomForestClassifier(n_estimators=10, random_state=42),
         ]:
             clf = ConformalClassifier(estimator)
             clf.fit(X_train, y_train)
@@ -62,8 +75,12 @@ class TestCoverageLevels:
     def test_regressor_coverage_at_different_alphas(self):
         """Test that higher alphas give higher empirical coverage."""
         X, y = make_regression(n_samples=500, n_features=10, random_state=42)
-        X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
-        X_calib, X_test, y_calib, y_test = train_test_split(X_rest, y_rest, test_size=0.5, random_state=42)
+        X_train, X_rest, y_train, y_rest = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
+        X_calib, X_test, y_calib, y_test = train_test_split(
+            X_rest, y_rest, test_size=0.5, random_state=42
+        )
 
         reg = ConformalRegressor(LinearRegression())
         reg.fit(X_train, y_train)
@@ -86,8 +103,12 @@ class TestCoverageLevels:
     def test_classifier_coverage_at_different_alphas(self):
         """Test classifier coverage at different alpha levels."""
         X, y = make_classification(n_samples=500, n_features=10, random_state=42)
-        X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
-        X_calib, X_test, y_calib, y_test = train_test_split(X_rest, y_rest, test_size=0.5, random_state=42)
+        X_train, X_rest, y_train, y_rest = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
+        X_calib, X_test, y_calib, y_test = train_test_split(
+            X_rest, y_rest, test_size=0.5, random_state=42
+        )
 
         clf = ConformalClassifier(LogisticRegression(max_iter=1000, random_state=42))
         clf.fit(X_train, y_train)
@@ -111,8 +132,12 @@ class TestBoundaryConditions:
     def test_small_calibration_set(self):
         """Test with very small calibration set."""
         X, y = make_regression(n_samples=100, n_features=5, random_state=42)
-        X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
-        X_calib, X_test, y_calib, y_test = train_test_split(X_rest, y_rest, test_size=0.9, random_state=42)
+        X_train, X_rest, y_train, y_rest = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
+        X_calib, X_test, y_calib, y_test = train_test_split(
+            X_rest, y_rest, test_size=0.9, random_state=42
+        )
 
         reg = ConformalRegressor(LinearRegression())
         reg.fit(X_train, y_train)
@@ -124,8 +149,12 @@ class TestBoundaryConditions:
     def test_large_alpha(self):
         """Test with alpha close to 1 that triggers warning."""
         X, y = make_regression(n_samples=50, n_features=5, random_state=42)
-        X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
-        X_calib, X_test, y_calib, y_test = train_test_split(X_rest, y_rest, test_size=0.5, random_state=42)
+        X_train, X_rest, y_train, y_rest = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
+        X_calib, X_test, y_calib, y_test = train_test_split(
+            X_rest, y_rest, test_size=0.5, random_state=42
+        )
 
         reg = ConformalRegressor(LinearRegression())
         reg.fit(X_train, y_train)
@@ -133,6 +162,7 @@ class TestBoundaryConditions:
 
         # With small calibration set, large alpha can trigger clipping warning
         import warnings
+
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             y_pred, intervals, _ = reg.predict(X_test, alpha=0.95)
@@ -143,8 +173,12 @@ class TestBoundaryConditions:
     def test_very_small_alpha(self):
         """Test with very small alpha."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
-        X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
-        X_calib, X_test, y_calib, y_test = train_test_split(X_rest, y_rest, test_size=0.5, random_state=42)
+        X_train, X_rest, y_train, y_rest = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
+        X_calib, X_test, y_calib, y_test = train_test_split(
+            X_rest, y_rest, test_size=0.5, random_state=42
+        )
 
         reg = ConformalRegressor(LinearRegression())
         reg.fit(X_train, y_train)
@@ -158,8 +192,12 @@ class TestBoundaryConditions:
     def test_invalid_alpha(self):
         """Test that invalid alpha values raise errors."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
-        X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
-        X_calib, X_test, y_calib, y_test = train_test_split(X_rest, y_rest, test_size=0.5, random_state=42)
+        X_train, X_rest, y_train, y_rest = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
+        X_calib, X_test, y_calib, y_test = train_test_split(
+            X_rest, y_rest, test_size=0.5, random_state=42
+        )
 
         reg = ConformalRegressor(LinearRegression())
         reg.fit(X_train, y_train)
@@ -184,8 +222,12 @@ class TestDataTypeHandling:
     def test_different_dtypes_float(self):
         """Test with different float dtypes."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
-        X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
-        X_calib, X_test, y_calib, y_test = train_test_split(X_rest, y_rest, test_size=0.5, random_state=42)
+        X_train, X_rest, y_train, y_rest = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
+        X_calib, X_test, y_calib, y_test = train_test_split(
+            X_rest, y_rest, test_size=0.5, random_state=42
+        )
 
         for dtype in [np.float32, np.float64]:
             X_train_typed = X_train.astype(dtype)
@@ -202,8 +244,12 @@ class TestDataTypeHandling:
     def test_1d_target_conversion(self):
         """Test that 1D targets are handled correctly."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
-        X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
-        X_calib, X_test, y_calib, y_test = train_test_split(X_rest, y_rest, test_size=0.5, random_state=42)
+        X_train, X_rest, y_train, y_rest = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
+        X_calib, X_test, y_calib, y_test = train_test_split(
+            X_rest, y_rest, test_size=0.5, random_state=42
+        )
 
         # Ensure y is 1D
         assert y_train.ndim == 1
@@ -223,8 +269,12 @@ class TestConsistency:
     def test_deterministic_predictions_with_seed(self):
         """Test that predictions are deterministic with set random seed."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
-        X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
-        X_calib, X_test, y_calib, y_test = train_test_split(X_rest, y_rest, test_size=0.5, random_state=42)
+        X_train, X_rest, y_train, y_rest = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
+        X_calib, X_test, y_calib, y_test = train_test_split(
+            X_rest, y_rest, test_size=0.5, random_state=42
+        )
 
         reg1 = ConformalRegressor(LinearRegression())
         reg1.fit(X_train, y_train)
@@ -242,8 +292,12 @@ class TestConsistency:
     def test_multiple_calls_give_same_intervals(self):
         """Test that calling predict multiple times gives same results."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
-        X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
-        X_calib, X_test, y_calib, y_test = train_test_split(X_rest, y_rest, test_size=0.5, random_state=42)
+        X_train, X_rest, y_train, y_rest = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
+        X_calib, X_test, y_calib, y_test = train_test_split(
+            X_rest, y_rest, test_size=0.5, random_state=42
+        )
 
         reg = ConformalRegressor(LinearRegression())
         reg.fit(X_train, y_train)
@@ -266,7 +320,9 @@ class TestWarnings:
     def test_multiple_calibrations_warning(self):
         """Test that multiple calibrations generate warning."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
-        X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
+        X_train, X_rest, y_train, y_rest = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
         X_calib1, X_calib2 = train_test_split(X_rest, test_size=0.5, random_state=42)
         y_calib1, y_calib2 = train_test_split(y_rest, test_size=0.5, random_state=42)
 
@@ -275,6 +331,7 @@ class TestWarnings:
         reg.calibrate(X_calib1, y_calib1)
 
         import warnings
+
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             reg.calibrate(X_calib2, y_calib2)

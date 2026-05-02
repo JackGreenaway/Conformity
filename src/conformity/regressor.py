@@ -88,7 +88,7 @@ class ConformalRegressor(BaseConformalPredictor, RegressorMixin):
         if self.is_calibrated_:
             warnings.warn(
                 "The estimator is already calibrated. Recalibrating may affect prediction quality.",
-                UserWarning
+                UserWarning,
             )
 
         y_pred = self.estimator_.predict(X)
@@ -98,7 +98,9 @@ class ConformalRegressor(BaseConformalPredictor, RegressorMixin):
 
         return self
 
-    def predict(self, X: ArrayLike, alpha: float = 0.05) -> Tuple[np.ndarray, np.ndarray, float]:
+    def predict(
+        self, X: ArrayLike, alpha: float = 0.05
+    ) -> Tuple[np.ndarray, np.ndarray, float]:
         """
         Make predictions with prediction intervals.
 
@@ -137,9 +139,7 @@ class ConformalRegressor(BaseConformalPredictor, RegressorMixin):
             )
 
         if alpha <= 0 or alpha >= 1:
-            raise ValueError(
-                f"alpha must be in the range (0, 1), got {alpha}"
-            )
+            raise ValueError(f"alpha must be in the range (0, 1), got {alpha}")
 
         y_pred = self.estimator_.predict(X)  # type: ignore
 
@@ -151,7 +151,7 @@ class ConformalRegressor(BaseConformalPredictor, RegressorMixin):
             warnings.warn(
                 f"Quantile value {quantile:.4f} was clipped to {clipped_quantile:.4f} to fit within [0, 1]. "
                 "This may indicate a very small calibration set, extreme alpha, and/or extreme values.",
-                UserWarning
+                UserWarning,
             )
             quantile = clipped_quantile
 

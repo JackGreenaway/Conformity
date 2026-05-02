@@ -62,7 +62,7 @@ class BaseConformalPredictor(BaseEstimator, ABC):
             Whether to automatically calibrate the model after fitting. If True,
             the training data will be split into training and calibration sets.
         tts_kwargs : dict or None, default=None
-            Optional keyword arguments passed to 
+            Optional keyword arguments passed to
             `sklearn.model_selection.train_test_split` when `auto_calibrate=True`.
             Default split is 80/20 if not specified.
 

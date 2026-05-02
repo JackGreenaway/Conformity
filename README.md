@@ -71,6 +71,7 @@ print(f"Quantile Level: {q_level:.4f}")
 ```
 
 **Output:**
+
 ```
 Predictions: [2.34  1.89  3.12  2.01  2.87]
 90% Prediction Intervals:
@@ -92,7 +93,7 @@ from sklearn.datasets import make_classification
 from conformity.classifier import ConformalClassifier
 
 # Generate sample data
-X, y = make_classification(n_samples=300, n_features=10, n_classes=3, 
+X, y = make_classification(n_samples=300, n_features=10, n_classes=3,
                            n_informative=8, random_state=42)
 
 # Split data
@@ -195,9 +196,11 @@ gb_classifier = ConformalClassifier(GradientBoostingClassifier(n_estimators=100)
 ### ConformalRegressor
 
 **Parameters:**
+
 - `estimator` (RegressorMixin): Scikit-learn compatible regression estimator
 
 **Methods:**
+
 - `fit(X, y, auto_calibrate=False, tts_kwargs=None)`: Fit the estimator to data
 - `calibrate(X, y)`: Calibrate using held-out data
 - `predict(X, alpha=0.05)`: Predict with intervals
@@ -206,9 +209,11 @@ gb_classifier = ConformalClassifier(GradientBoostingClassifier(n_estimators=100)
 ### ConformalClassifier
 
 **Parameters:**
+
 - `estimator` (ClassifierMixin): Scikit-learn compatible classification estimator
 
 **Methods:**
+
 - `fit(X, y, auto_calibrate=False, tts_kwargs=None)`: Fit the estimator to data
 - `calibrate(X, y)`: Calibrate using held-out data
 - `predict(X, alpha=0.05)`: Predict with sets
@@ -243,6 +248,7 @@ For any miscoverage level $\alpha \in (0, 1)$, the true observation falls within
 ## Examples
 
 See the [examples](./examples/) directory for detailed notebooks:
+
 - [Regression with Continuous Targets](./examples/regression_example.ipynb)
 - [Classification with Discrete Classes](./examples/classification_example.ipynb)
 - [Comparison with Uncertainty Quantification Methods](./examples/comparison.ipynb)
@@ -271,19 +277,6 @@ Contributions are welcome! Please follow these steps:
 4. Run `uv run pytest` to ensure all tests pass
 5. Submit a pull request
 
-## Citation
-
-If you use Conformity in your research, please cite:
-
-```bibtex
-@software{conformity2024,
-  author = {Author Name},
-  title = {Conformity: Conformal Prediction for Uncertainty Quantification},
-  year = {2024},
-  url = {https://github.com/your-username/conformity}
-}
-```
-
 ## References
 
 - Vovk, V., Gammerman, A., & Shafer, G. (1999). "[Algorithmic Learning Theory](https://www.springer.com/gp/book/9783540663768)"
@@ -304,13 +297,15 @@ This library is inspired by the excellent work in conformal prediction and uncer
 - **Discussions**: [GitHub Discussions](https://github.com/your-username/conformity/discussions)
 - **Documentation**: Full API docs available in [DOCUMENTATION.md](./docs/DOCUMENTATION.md)
 
+```python
+
 efficiency = prediction_interval_efficiency(
-    point_prediction=y_pred, prediction_intervals=intervals
+point_prediction=y_pred, prediction_intervals=intervals
 )
 print(f"Prediction Interval Efficiency: {efficiency:.03f}")
 
 ratio = prediction_interval_ratio(
-    point_predictions=y_pred, prediction_intervals=intervals
+point_predictions=y_pred, prediction_intervals=intervals
 )
 print(f"Prediction Interval Ratio: {ratio:.03f}")
 
@@ -318,7 +313,7 @@ mse = prediction_interval_mse(y_true=y_pred, prediction_intervals=intervals)
 print(f"Prediction Interval MSE: {mse[0]}, {mse[1]}")
 ```
 
-```
+```python
 Prediction Set Coverage: 0.950
 Prediction Set Efficiency: 1.842
 Prediction Set Ratio: 3.758
@@ -326,6 +321,7 @@ Prediction Set MSE: 0.848109134815186, 0.8481091348151861
 ```
 
 ### Example: Conformal Classifier
+
 ```python
 import numpy as np
 from pprint import pprint
@@ -401,15 +397,18 @@ Prediction Set Coverage: 0.960
 Prediction Set Efficiency: 0.000
 ```
 
-
 ### Development
+
 For development purposes, install the `dev` dependencies:
+
 ```bash
 uv install --group dev
 ```
 
 ### Building the Project
+
 To build the project for distribution:
+
 ```bash
 uv build
 ```
@@ -423,6 +422,7 @@ uv build
 ## Contributing
 
 Contributions are welcome! To contribute:
+
 1. Fork the repository.
 2. Create a new branch for your feature or bug fix.
 3. Commit your changes and push the branch.

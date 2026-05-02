@@ -17,6 +17,7 @@ Conformity is a scikit-learn compatible library implementing conformal predictio
 ### What is Conformal Prediction?
 
 Conformal prediction is a framework that:
+
 - Complements any base predictor (linear models, neural networks, random forests, etc.)
 - Produces prediction sets/intervals with **guaranteed coverage** under exchangeability
 - Makes **no distributional assumptions** about the data
@@ -106,7 +107,7 @@ class BaseConformalPredictor(BaseEstimator, ABC):
     ----------
     estimator : BaseEstimator
         Base predictor to wrap
-    
+
     Attributes
     ----------
     estimator_ : BaseEstimator
@@ -143,10 +144,12 @@ y_pred, intervals, q_level = reg.predict(X_test, alpha=0.1)
 ```
 
 **Parameters:**
+
 - `estimator` : RegressorMixin
   - Any scikit-learn compatible regression estimator
 
 **Attributes:**
+
 - `estimator_` : Fitted estimator
 - `is_calibrated_` : bool
 - `calibration_non_conformity` : array (n_calib,)
@@ -155,6 +158,7 @@ y_pred, intervals, q_level = reg.predict(X_test, alpha=0.1)
   - Number of calibration samples
 
 **Methods:**
+
 - `fit(X, y, auto_calibrate=False, tts_kwargs=None)` → self
 - `calibrate(X_calib, y_calib)` → self
 - `predict(X, alpha=0.05)` → (y_pred, intervals, q_level)
@@ -177,10 +181,12 @@ pred_set, bool_set, probs, q_level = clf.predict(X_test, alpha=0.1)
 ```
 
 **Parameters:**
+
 - `estimator` : ClassifierMixin
   - Any scikit-learn compatible classifier (must have `predict_proba`)
 
 **Attributes:**
+
 - `estimator_` : Fitted estimator
 - `is_calibrated_` : bool
 - `calibration_non_conformity` : array (n_calib,)
@@ -189,6 +195,7 @@ pred_set, bool_set, probs, q_level = clf.predict(X_test, alpha=0.1)
   - Number of calibration samples
 
 **Methods:**
+
 - `fit(X, y, auto_calibrate=False, tts_kwargs=None)` → self
 - `calibrate(X_calib, y_calib)` → self
 - `predict(X, alpha=0.05)` → (pred_set, bool_set, probs, q_level)
@@ -315,7 +322,7 @@ pipeline = Pipeline([
 # Use with cross-validation
 from sklearn.model_selection import cross_val_score
 scores = cross_val_score(
-    pipeline, X, y, cv=5, 
+    pipeline, X, y, cv=5,
     scoring='neg_mean_squared_error'
 )
 print(f"CV Scores: {scores}")
@@ -375,6 +382,7 @@ y_pred, intervals, _ = reg.predict(X_new, alpha=0.1)
 **Cause**: Calling `calibrate()` without first calling `fit()`
 
 **Solution**:
+
 ```python
 reg = ConformalRegressor(LinearRegression())
 reg.fit(X_train, y_train)  # DO THIS FIRST
@@ -384,12 +392,14 @@ reg.calibrate(X_calib, y_calib)
 ### Issue: Coverage much lower than expected
 
 **Common Causes**:
+
 1. Too small calibration set (n < 30 recommended)
 2. Calibration set not independent from training
 3. Base estimator not well-calibrated
 4. Data violates exchangeability assumption
 
 **Solutions**:
+
 - Increase calibration set size
 - Ensure proper data splitting
 - Try different base estimators
@@ -398,11 +408,13 @@ reg.calibrate(X_calib, y_calib)
 ### Issue: Very wide prediction intervals
 
 **Causes**:
+
 1. Base estimator makes poor predictions
 2. High noise in data
 3. Small alpha (e.g., alpha=0.01)
 
 **Solutions**:
+
 - Try better base estimator
 - Check data quality
 - Increase alpha (less stringent coverage)
@@ -410,6 +422,7 @@ reg.calibrate(X_calib, y_calib)
 ### Issue: Pipeline compatibility errors
 
 **Solution**: Ensure your base estimator is scikit-learn compatible:
+
 ```python
 from sklearn.utils.validation import check_is_fitted
 
@@ -422,6 +435,7 @@ estimator.predict_proba(X)  # For classifier
 ### Issue: Memory error on large datasets
 
 **Solution**: Process in batches:
+
 ```python
 # Train on subset if needed
 sample_indices = np.random.choice(len(X), size=5000, replace=False)

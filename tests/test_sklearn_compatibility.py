@@ -112,25 +112,29 @@ class TestPipelineCompatibility:
         """Test ConformalRegressor in a Pipeline."""
         X_train, X_test, y_train, y_test = regression_data
 
-        pipe = Pipeline([
-            ('scaler', StandardScaler()),
-            ('regressor', ConformalRegressor(LinearRegression()))
-        ])
+        pipe = Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("regressor", ConformalRegressor(LinearRegression())),
+            ]
+        )
 
         pipe.fit(X_train[:100], y_train[:100])
-        assert hasattr(pipe.named_steps['regressor'], 'estimator_')
+        assert hasattr(pipe.named_steps["regressor"], "estimator_")
 
     def test_classifier_in_pipeline(self, classification_data):
         """Test ConformalClassifier in a Pipeline."""
         X_train, X_test, y_train, y_test = classification_data
 
-        pipe = Pipeline([
-            ('scaler', StandardScaler()),
-            ('classifier', ConformalClassifier(LogisticRegression(max_iter=1000)))
-        ])
+        pipe = Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("classifier", ConformalClassifier(LogisticRegression(max_iter=1000))),
+            ]
+        )
 
         pipe.fit(X_train[:100], y_train[:100])
-        assert hasattr(pipe.named_steps['classifier'], 'estimator_')
+        assert hasattr(pipe.named_steps["classifier"], "estimator_")
 
     def test_pipeline_predict_regressor(self, regression_data):
         """Test prediction through pipeline (regressor)."""
@@ -205,8 +209,8 @@ class TestRegressorMixin:
     def test_conformal_regressor_has_estimator_type(self):
         """Test that ConformalRegressor has _estimator_type attribute."""
         reg = ConformalRegressor(LinearRegression())
-        assert hasattr(reg, '_estimator_type')
-        assert reg._estimator_type == 'regressor'
+        assert hasattr(reg, "_estimator_type")
+        assert reg._estimator_type == "regressor"
 
     def test_conformal_regressor_is_regressor_mixin(self):
         """Test that ConformalRegressor inherits from RegressorMixin."""
@@ -222,8 +226,8 @@ class TestClassifierMixin:
     def test_conformal_classifier_has_estimator_type(self):
         """Test that ConformalClassifier has _estimator_type attribute."""
         clf = ConformalClassifier(LogisticRegression())
-        assert hasattr(clf, '_estimator_type')
-        assert clf._estimator_type == 'classifier'
+        assert hasattr(clf, "_estimator_type")
+        assert clf._estimator_type == "classifier"
 
     def test_conformal_classifier_is_classifier_mixin(self):
         """Test that ConformalClassifier inherits from ClassifierMixin."""
@@ -244,14 +248,16 @@ class TestAutoCalibrationEdgeCases:
         reg.fit(X, y, auto_calibrate=True)
 
         assert reg.is_calibrated_
-        assert hasattr(reg, 'calibration_non_conformity')
+        assert hasattr(reg, "calibration_non_conformity")
 
     def test_auto_calibrate_with_custom_split(self, regression_data):
         """Test auto_calibrate with custom test_size."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
 
         reg = ConformalRegressor(LinearRegression())
-        reg.fit(X, y, auto_calibrate=True, tts_kwargs={'test_size': 0.5, 'random_state': 42})
+        reg.fit(
+            X, y, auto_calibrate=True, tts_kwargs={"test_size": 0.5, "random_state": 42}
+        )
 
         assert reg.is_calibrated_
 

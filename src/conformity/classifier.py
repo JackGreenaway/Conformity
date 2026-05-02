@@ -88,7 +88,7 @@ class ConformalClassifier(BaseConformalPredictor, ClassifierMixin):
         if self.is_calibrated_:
             warnings.warn(
                 "The estimator is already calibrated. Recalibrating may affect prediction quality.",
-                UserWarning
+                UserWarning,
             )
 
         y_prob = self.estimator_.predict_proba(X)
