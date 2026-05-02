@@ -144,8 +144,8 @@ class TestPipelineCompatibility:
         reg.fit(X_train[:100], y_train[:100])
         reg.calibrate(X_train[100:150], y_train[100:150])
 
-        # Should be able to call predict
-        y_pred, intervals, q_level = reg.predict(X_test)
+        # Predict through regressor
+        y_pred, intervals = reg.predict(X_test)
         assert y_pred.shape[0] == X_test.shape[0]
 
     def test_pipeline_predict_classifier(self, classification_data):
@@ -156,8 +156,8 @@ class TestPipelineCompatibility:
         clf.fit(X_train[:100], y_train[:100])
         clf.calibrate(X_train[100:150], y_train[100:150])
 
-        # Should be able to call predict
-        pred_set, _, _, _ = clf.predict(X_test)
+        # Predict through classifier
+        pred_set, y_proba = clf.predict(X_test)
         assert pred_set.shape[0] == X_test.shape[0]
 
 

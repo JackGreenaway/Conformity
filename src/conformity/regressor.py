@@ -2,7 +2,7 @@ import numpy as np
 import warnings
 from conformity.base import BaseConformalPredictor
 from sklearn.base import RegressorMixin
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.utils.validation import check_array, check_is_fitted
 from numpy.typing import ArrayLike
 from typing_extensions import Self
 from typing import Tuple
@@ -100,7 +100,7 @@ class ConformalRegressor(BaseConformalPredictor, RegressorMixin):
 
     def predict(
         self, X: ArrayLike, alpha: float = 0.05
-    ) -> Tuple[np.ndarray, np.ndarray, float]:
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Make predictions with prediction intervals.
 
@@ -114,13 +114,18 @@ class ConformalRegressor(BaseConformalPredictor, RegressorMixin):
 
         Returns
         -------
-        tuple of (ndarray, ndarray, float)
+        tuple of (ndarray, ndarray)
             - y_pred : ndarray of shape (n_samples,)
                 Point predictions from the base estimator.
             - intervals : ndarray of shape (n_samples, 2)
                 Prediction intervals with columns [lower, upper].
-            - q_level : float
-                The quantile level used for computing the prediction intervals.
+
+        Attributes Set
+        ---------------
+        alpha_used_ : float
+            The alpha value used for this prediction.
+        q_level_ : float
+            The quantile level used for computing the prediction intervals.
 
         Raises
         ------
@@ -162,4 +167,10 @@ class ConformalRegressor(BaseConformalPredictor, RegressorMixin):
         y_pred_lower = y_pred - y_pred_q_level
         y_pred_higher = y_pred + y_pred_q_level
 
-        return y_pred, np.column_stack((y_pred_lower, y_pred_higher)), y_pred_q_level
+        self.alpha_used_ = alpha
+        self.q_level_ = np.quantile(
+            self.calibration_non_conformity,
+            quantile,
+        )
+
+        return y_pred, np.column_stack((y_pred_lower, y_pred_higher))

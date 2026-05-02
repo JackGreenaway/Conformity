@@ -244,7 +244,7 @@ class TestMetricsWithRealData:
         reg.fit(X_train, y_train)
         reg.calibrate(X_calib, y_calib)
 
-        y_pred, intervals, _ = reg.predict(X_test, alpha=0.1)
+        y_pred, intervals = reg.predict(X_test, alpha=0.1)
 
         coverage = prediction_interval_coverage(y_test, intervals)
         efficiency = prediction_interval_efficiency(y_pred, intervals)
@@ -275,7 +275,7 @@ class TestMetricsWithRealData:
         clf.fit(X_train, y_train)
         clf.calibrate(X_calib, y_calib)
 
-        pred_set, _, _, _ = clf.predict(X_test, alpha=0.1)
+        pred_set, _ = clf.predict(X_test, alpha=0.1)
 
         coverage = prediction_set_coverage(y_test, pred_set)
         efficiency = prediction_set_efficiency(pred_set)

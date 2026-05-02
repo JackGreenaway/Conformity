@@ -40,7 +40,7 @@ class TestMultipleEstimators:
             reg.fit(X_train, y_train)
             reg.calibrate(X_calib, y_calib)
 
-            y_pred, intervals, _ = reg.predict(X_test, alpha=0.1)
+            y_pred, intervals = reg.predict(X_test, alpha=0.1)
 
             assert y_pred.shape[0] == X_test.shape[0]
             assert intervals.shape == (X_test.shape[0], 2)
@@ -64,7 +64,7 @@ class TestMultipleEstimators:
             clf.fit(X_train, y_train)
             clf.calibrate(X_calib, y_calib)
 
-            pred_set, _, _, _ = clf.predict(X_test, alpha=0.1)
+            pred_set, _ = clf.predict(X_test, alpha=0.1)
 
             assert pred_set.shape[0] == X_test.shape[0]
 
@@ -90,7 +90,7 @@ class TestCoverageLevels:
         coverages = []
 
         for alpha in alphas:
-            _, intervals, _ = reg.predict(X_test, alpha=alpha)
+            _, intervals = reg.predict(X_test, alpha=alpha)
             coverage = prediction_interval_coverage(y_test, intervals)
             coverages.append(coverage)
 
@@ -118,7 +118,7 @@ class TestCoverageLevels:
         coverages = []
 
         for alpha in alphas:
-            pred_set, _, _, _ = clf.predict(X_test, alpha=alpha)
+            pred_set, _ = clf.predict(X_test, alpha=alpha)
             coverage = prediction_set_coverage(y_test, pred_set)
             coverages.append(coverage)
 
@@ -143,7 +143,7 @@ class TestBoundaryConditions:
         reg.fit(X_train, y_train)
         reg.calibrate(X_calib, y_calib)
 
-        y_pred, intervals, _ = reg.predict(X_test)
+        y_pred, intervals = reg.predict(X_test)
         assert intervals.shape[0] == X_test.shape[0]
 
     def test_large_alpha(self):
@@ -165,7 +165,7 @@ class TestBoundaryConditions:
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            y_pred, intervals, _ = reg.predict(X_test, alpha=0.95)
+            y_pred, intervals = reg.predict(X_test, alpha=0.95)
             # May or may not warn depending on calibration size, just check it works
             assert intervals.shape[0] == X_test.shape[0]
             assert np.all(intervals[:, 0] <= intervals[:, 1])
@@ -184,7 +184,7 @@ class TestBoundaryConditions:
         reg.fit(X_train, y_train)
         reg.calibrate(X_calib, y_calib)
 
-        y_pred, intervals, _ = reg.predict(X_test, alpha=0.001)
+        y_pred, intervals = reg.predict(X_test, alpha=0.001)
 
         # Should still return valid intervals
         assert intervals.shape[0] == X_test.shape[0]
@@ -238,7 +238,7 @@ class TestDataTypeHandling:
             reg.fit(X_train_typed, y_train)
             reg.calibrate(X_calib_typed, y_calib)
 
-            y_pred, intervals, _ = reg.predict(X_test_typed)
+            y_pred, intervals = reg.predict(X_test_typed)
             assert y_pred.shape[0] == X_test.shape[0]
 
     def test_1d_target_conversion(self):
@@ -259,7 +259,7 @@ class TestDataTypeHandling:
         reg.fit(X_train, y_train)
         reg.calibrate(X_calib, y_calib)
 
-        y_pred, intervals, _ = reg.predict(X_test)
+        y_pred, intervals = reg.predict(X_test)
         assert y_pred.shape[0] == X_test.shape[0]
 
 
@@ -279,12 +279,12 @@ class TestConsistency:
         reg1 = ConformalRegressor(LinearRegression())
         reg1.fit(X_train, y_train)
         reg1.calibrate(X_calib, y_calib)
-        pred1, int1, _ = reg1.predict(X_test, alpha=0.1)
+        pred1, int1 = reg1.predict(X_test, alpha=0.1)
 
         reg2 = ConformalRegressor(LinearRegression())
         reg2.fit(X_train, y_train)
         reg2.calibrate(X_calib, y_calib)
-        pred2, int2, _ = reg2.predict(X_test, alpha=0.1)
+        pred2, int2 = reg2.predict(X_test, alpha=0.1)
 
         np.testing.assert_array_almost_equal(pred1, pred2)
         np.testing.assert_array_almost_equal(int1, int2)
@@ -303,15 +303,14 @@ class TestConsistency:
         reg.fit(X_train, y_train)
         reg.calibrate(X_calib, y_calib)
 
-        pred1, int1, q1 = reg.predict(X_test, alpha=0.1)
-        pred2, int2, q2 = reg.predict(X_test, alpha=0.1)
-        pred3, int3, q3 = reg.predict(X_test, alpha=0.1)
+        pred1, int1 = reg.predict(X_test, alpha=0.1)
+        pred2, int2 = reg.predict(X_test, alpha=0.1)
+        pred3, int3 = reg.predict(X_test, alpha=0.1)
 
         np.testing.assert_array_equal(pred1, pred2)
         np.testing.assert_array_equal(pred2, pred3)
         np.testing.assert_array_equal(int1, int2)
         np.testing.assert_array_equal(int2, int3)
-        assert q1 == q2 == q3
 
 
 class TestWarnings:

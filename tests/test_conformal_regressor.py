@@ -38,11 +38,11 @@ def test_predict_interval_shape(synthetic_regression_data):
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    y_pred, intervals, q_level = reg.predict(X_test, alpha=0.1)
+    y_pred, intervals = reg.predict(X_test, alpha=0.1)
 
     assert y_pred.shape[0] == X_test.shape[0]
     assert intervals.shape == (X_test.shape[0], 2)
-    assert isinstance(q_level, float)
+    assert hasattr(reg, 'q_level_')
 
 
 def test_predict_without_calibration_raises(synthetic_regression_data):
@@ -77,8 +77,8 @@ def test_predict_with_different_alpha(synthetic_regression_data):
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    _, intervals_01, _ = reg.predict(X_test, alpha=0.01)
-    _, intervals_20, _ = reg.predict(X_test, alpha=0.20)
+    _, intervals_01 = reg.predict(X_test, alpha=0.01)
+    _, intervals_20 = reg.predict(X_test, alpha=0.20)
 
     assert np.all(
         (intervals_01[:, 1] - intervals_01[:, 0])
@@ -109,7 +109,7 @@ def test_interval_contains_true_value(synthetic_regression_data):
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    y_pred, intervals, _ = reg.predict(X_test, alpha=0.1)
+    y_pred, intervals = reg.predict(X_test, alpha=0.1)
 
     # check that at least 85% of true values are within the intervals (since alpha=0.1, expect ~90%)
     coverage = np.mean((y_test >= intervals[:, 0]) & (y_test <= intervals[:, 1]))
@@ -127,7 +127,7 @@ def test_extreme_inputs():
     reg.calibrate(X, y)
 
     with warnings.catch_warnings(record=True) as w:
-        y_pred, intervals, _ = reg.predict(X)
+        y_pred, intervals = reg.predict(X)
 
         assert any("Quantile value" in str(warn.message) for warn in w)
 
@@ -144,7 +144,7 @@ def test_single_sample_prediction(synthetic_regression_data):
     reg.calibrate(X_test, y_test)
 
     single_sample = X_test[:1]
-    y_pred, intervals, _ = reg.predict(single_sample, alpha=0.1)
+    y_pred, intervals = reg.predict(single_sample, alpha=0.1)
 
     assert y_pred.shape == (1,)
     assert intervals.shape == (1, 2)
@@ -159,11 +159,11 @@ def test_alpha_boundary_values(synthetic_regression_data):
     reg.calibrate(X_test, y_test)
 
     # Test alpha very close to 0
-    _, intervals_small, q_small = reg.predict(X_test, alpha=0.001)
+    _, intervals_small = reg.predict(X_test, alpha=0.001)
     # Test alpha close to 1
-    _, intervals_large, q_large = reg.predict(X_test, alpha=0.99)
+    _, intervals_large = reg.predict(X_test, alpha=0.99)
 
-    # q_level and interval widths should increase with alpha
+    # interval widths should increase with alpha
     # Use isclose for numerical comparison with small numbers
     small_width = np.mean(intervals_small[:, 1] - intervals_small[:, 0])
     large_width = np.mean(intervals_large[:, 1] - intervals_large[:, 0])
@@ -217,7 +217,7 @@ def test_prediction_intervals_monotonic(synthetic_regression_data):
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    y_pred, intervals, _ = reg.predict(X_test, alpha=0.1)
+    y_pred, intervals = reg.predict(X_test, alpha=0.1)
 
     # Lower bound should be <= prediction <= upper bound
     assert np.all(intervals[:, 0] <= y_pred)
@@ -231,13 +231,12 @@ def test_consistent_predictions(synthetic_regression_data):
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    y_pred1, intervals1, q1 = reg.predict(X_test, alpha=0.1)
-    y_pred2, intervals2, q2 = reg.predict(X_test, alpha=0.1)
+    y_pred1, intervals1 = reg.predict(X_test, alpha=0.1)
+    y_pred2, intervals2 = reg.predict(X_test, alpha=0.1)
 
     # Predictions should be deterministic
     np.testing.assert_array_equal(y_pred1, y_pred2)
     np.testing.assert_array_equal(intervals1, intervals2)
-    assert q1 == q2
 
 
 def test_increasing_alpha_increases_intervals(synthetic_regression_data):
@@ -251,7 +250,7 @@ def test_increasing_alpha_increases_intervals(synthetic_regression_data):
     widths = []
 
     for alpha in alphas:
-        _, intervals, _ = reg.predict(X_test, alpha=alpha)
+        _, intervals = reg.predict(X_test, alpha=alpha)
         width = np.mean(intervals[:, 1] - intervals[:, 0])
         widths.append(width)
 
@@ -289,7 +288,7 @@ def test_predict_different_sample_sizes(synthetic_regression_data):
     # Test predictions for various numbers of samples
     for n_samples in [1, 10, 100, 500]:
         X_subset = X_test[:n_samples]
-        y_pred, intervals, _ = reg.predict(X_subset, alpha=0.1)
+        y_pred, intervals = reg.predict(X_subset, alpha=0.1)
 
         assert y_pred.shape[0] == n_samples
         assert intervals.shape == (n_samples, 2)
@@ -335,7 +334,7 @@ def test_predict_with_all_zero_targets(synthetic_regression_data):
     reg.fit(X_train, y_zero)
     reg.calibrate(X_test, np.zeros_like(y_test))
 
-    y_pred, intervals, _ = reg.predict(X_test, alpha=0.1)
+    y_pred, intervals = reg.predict(X_test, alpha=0.1)
 
     assert y_pred.shape[0] == X_test.shape[0]
     assert intervals.shape == (X_test.shape[0], 2)
@@ -348,8 +347,8 @@ def test_large_alpha_produces_wide_intervals(synthetic_regression_data):
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    _, intervals_small, _ = reg.predict(X_test, alpha=0.01)
-    _, intervals_large, _ = reg.predict(X_test, alpha=0.9)
+    _, intervals_small = reg.predict(X_test, alpha=0.01)
+    _, intervals_large = reg.predict(X_test, alpha=0.9)
 
     avg_width_small = np.mean(intervals_small[:, 1] - intervals_small[:, 0])
     avg_width_large = np.mean(intervals_large[:, 1] - intervals_large[:, 0])
@@ -374,8 +373,9 @@ def test_predict_returns_correct_types(synthetic_regression_data):
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    y_pred, intervals, q_level = reg.predict(X_test[:5], alpha=0.1)
+    y_pred, intervals = reg.predict(X_test[:5], alpha=0.1)
 
     assert isinstance(y_pred, np.ndarray)
     assert isinstance(intervals, np.ndarray)
-    assert isinstance(q_level, (float, np.floating))
+    assert hasattr(reg, 'q_level_')
+    assert isinstance(reg.q_level_, (float, np.floating))

@@ -2,7 +2,7 @@ import numpy as np
 import warnings
 from conformity.base import BaseConformalPredictor
 from sklearn.base import ClassifierMixin
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.utils.validation import check_array, check_is_fitted
 from numpy.typing import ArrayLike
 from typing_extensions import Self
 from typing import Tuple
@@ -99,7 +99,7 @@ class ConformalClassifier(BaseConformalPredictor, ClassifierMixin):
 
         return self
 
-    def predict(self, X: ArrayLike, alpha: float = 0.05) -> Tuple:
+    def predict(self, X: ArrayLike, alpha: float = 0.05) -> Tuple[np.ndarray, np.ndarray]:
         """
         Make predictions with prediction sets.
 
@@ -113,15 +113,18 @@ class ConformalClassifier(BaseConformalPredictor, ClassifierMixin):
 
         Returns
         -------
-        tuple of (ndarray, ndarray, ndarray, float)
+        tuple of (ndarray, ndarray)
             - pred_set : ndarray of shape (n_samples, n_classes)
                 Prediction sets for each sample. NaN indicates classes not in the set.
-            - boolean_set : ndarray of shape (n_samples, n_classes)
-                Boolean mask indicating membership in prediction set.
-            - y_prob : ndarray of shape (n_samples, n_classes)
+            - y_proba : ndarray of shape (n_samples, n_classes)
                 Class probabilities from the base estimator.
-            - q_level : float
-                The quantile level used for computing the prediction sets.
+
+        Attributes Set
+        ---------------
+        alpha_used_ : float
+            The alpha value used for this prediction.
+        q_level_ : float
+            The quantile level used for computing the prediction sets.
 
         Raises
         ------
@@ -150,6 +153,9 @@ class ConformalClassifier(BaseConformalPredictor, ClassifierMixin):
 
         q_level = np.ceil((self.n_calib + 1) * (1 - alpha)) / self.n_calib
 
+        self.alpha_used_ = alpha
+        self.q_level_ = q_level
+
         boolean_set = conformity_score > (1 - q_level)
         pred_set = np.where(
             boolean_set,
@@ -157,4 +163,4 @@ class ConformalClassifier(BaseConformalPredictor, ClassifierMixin):
             np.nan,
         )
 
-        return (pred_set, boolean_set, y_prob, q_level)
+        return (pred_set, y_prob)

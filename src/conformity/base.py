@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
-import numpy as np
 from numpy.typing import ArrayLike
 from typing_extensions import Self
 from sklearn.base import BaseEstimator, clone
 from sklearn.model_selection import train_test_split
-from sklearn.utils.validation import check_X_y, check_array
+from sklearn.utils.validation import check_X_y
 from typing import Dict, Any, Optional
 
 

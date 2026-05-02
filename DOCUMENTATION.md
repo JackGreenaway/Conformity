@@ -273,7 +273,10 @@ reg.fit(X_train, y_train)
 reg.calibrate(X_calib, y_calib)
 
 # Predict with intervals
-y_pred, intervals, q_level = reg.predict(X_test, alpha=0.1)
+y_pred, intervals = reg.predict(X_test, alpha=0.1)
+
+# Access quantile level from attribute
+print(f"Quantile Level: {reg.q_level_}")
 
 # Evaluate
 coverage = prediction_interval_coverage(y_test, intervals)
@@ -299,7 +302,7 @@ clf.calibrate(X_calib, y_calib)
 
 # Test different alpha levels
 for alpha in [0.01, 0.05, 0.1, 0.2]:
-    pred_set, _, _, _ = clf.predict(X_test, alpha=alpha)
+    pred_set, _ = clf.predict(X_test, alpha=alpha)
     coverage = prediction_set_coverage(y_test, pred_set)
     efficiency = prediction_set_efficiency(pred_set)
     print(f"α={alpha}: Coverage={coverage:.3f}, Efficiency={efficiency:.3f}")

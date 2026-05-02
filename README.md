@@ -62,12 +62,12 @@ regressor.fit(X_train, y_train)
 regressor.calibrate(X_calib, y_calib)
 
 # Make predictions with uncertainty intervals
-y_pred, intervals, q_level = regressor.predict(X_test, alpha=0.1)
+y_pred, intervals = regressor.predict(X_test, alpha=0.1)
 
 print("Predictions:", y_pred[:5])
 print("90% Prediction Intervals:")
 print(intervals[:5])
-print(f"Quantile Level: {q_level:.4f}")
+print(f"Quantile Level: {regressor.q_level_:.4f}")
 ```
 
 **Output:**
@@ -106,11 +106,11 @@ classifier.fit(X_train, y_train)
 classifier.calibrate(X_calib, y_calib)
 
 # Make predictions with prediction sets
-pred_set, _, class_probs, q_level = classifier.predict(X_test, alpha=0.1)
+pred_set, class_probs = classifier.predict(X_test, alpha=0.1)
 
 print("Prediction Sets (classes in set):", pred_set[:5])
 print("Class Probabilities:", class_probs[:5])
-print(f"Quantile Level: {q_level:.4f}")
+print(f"Quantile Level: {classifier.q_level_:.4f}")
 ```
 
 ## Evaluation Metrics
