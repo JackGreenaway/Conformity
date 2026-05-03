@@ -1,9 +1,8 @@
 name: Upload Python Package
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -15,9 +14,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Clean previous build artifacts
-        run: rm -rf dist build *.egg-info
 
       - uses: actions/setup-python@v5
         with:

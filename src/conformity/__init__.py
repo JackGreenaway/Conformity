@@ -17,7 +17,7 @@ from .metrics import (
     prediction_interval_mse,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "BaseConformalPredictor",
