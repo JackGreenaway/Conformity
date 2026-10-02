@@ -1,5 +1,39 @@
 # Statistical specification
 
+## Default usage and coverage assumptions
+
+```python
+from sklearn.datasets import make_regression
+from sklearn.linear_model import Ridge
+from sklearn.model_selection import cross_validate
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from conformity import ConformalRegressor
+
+X, y = make_regression(n_samples=1000, noise=20, random_state=42)
+X_new = X[:5]  # Replace with new observations in practice.
+
+pipe = Pipeline([
+    ("scaler", StandardScaler()),
+    ("conformal", ConformalRegressor(
+        Ridge(),
+        prediction_mode="point",
+        auto_calibrate=True,
+        random_state=42,
+    )),
+])
+
+results = cross_validate(pipe, X, y, cv=5, scoring="r2")
+
+pipe.fit(X, y)
+points = pipe.predict(X_new)
+points, intervals = pipe.predict(X_new, return_interval=True)
+```
+
+This is the default usage pattern in these docs. `Pipeline` is imported directly from `sklearn.pipeline` and takes a list of named steps. Point mode works with ordinary sklearn scorers; request intervals explicitly with `return_interval=True` (optionally pass `alpha`, which defaults to `0.05`). `cross_validate` fits clones, so fit the original pipeline before predicting.
+
+The outer scaler fits on all observations passed to each pipeline fit, including the final wrapper's internal calibration features. This workflow is supported, but the usual split-conformal coverage proof does not apply to that placement of learned preprocessing. For that guarantee, put learned preprocessing inside the wrapped estimator, as described in [THEORY.md](THEORY.md#pipeline-placement-and-selection).
+
 ## Estimator and data contract
 
 Both wrappers require an estimator and fit a fresh sklearn clone. A supplied fitted estimator is therefore refitted, not used in a prefit mode. Regression requires finite single-output predictions; classification requires probabilities and `classes_`. The complete learned score function, including preprocessing, feature selection, probability calibration and hyperparameter tuning, must be fixed without using the conformal calibration observations.
@@ -52,9 +86,9 @@ For the true label these are super-uniform under the same assumptions: `P(p(X_ne
 
 ## Pipeline placement and selection
 
-Prefer `ConformalRegressor(Pipeline(...), auto_calibrate=True)` and its classification equivalent. Internal splitting then happens before every fitted pipeline step. Wrapping `GridSearchCV(Pipeline(...))` also keeps calibration out of tuning. Tuning a wrapper externally and then reusing its internal calibration split can introduce selection dependence; recalibrate on fresh held-out data.
+For the coverage theorem, use `ConformalRegressor(Pipeline([("scaler", StandardScaler()), ("ridge", Ridge())]), prediction_mode="point", auto_calibrate=True, random_state=42)` and its classification equivalent. This is the alternative to the default outer-preprocessing workflow when calibration must be excluded from every learned step. Internal splitting then happens before every fitted pipeline step. Wrapping `GridSearchCV(Pipeline(...))` also keeps calibration out of tuning. Tuning a wrapper externally and then reusing its internal calibration split can introduce selection dependence; recalibrate on fresh held-out data.
 
-An outer `Pipeline(preprocessing, wrapper)` is valid with manual calibration held out before `Pipeline.fit`: transform calibration features using the fitted prefix, then call the final wrapper's `calibrate`. Automatically splitting only inside the final wrapper allows preceding learned transformers to see calibration features. The standard proof above then does not apply. Stateless transformations are safe. Outcome stratification, ordered splitting and grouped sampling need assumptions appropriate to their sampling scheme; the default random, unstratified split avoids those extra requirements for iid data.
+An outer `Pipeline([("preprocessing", preprocessing), ("conformal", wrapper)])` is valid with manual calibration held out before `Pipeline.fit`: transform calibration features using the fitted prefix, then call the final wrapper's `calibrate`. Automatically splitting only inside the final wrapper allows preceding learned transformers to see calibration features. The standard proof above then does not apply. Stateless transformations are safe. Outcome stratification, ordered splitting and grouped sampling need assumptions appropriate to their sampling scheme; the default random, unstratified split avoids those extra requirements for iid data.
 
 ## Evaluation and limits
 

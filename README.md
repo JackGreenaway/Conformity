@@ -8,143 +8,69 @@ pip install conformity-calib
 
 ## Regression
 
-Put preprocessing **inside** the wrapped pipeline. The automatic split then excludes calibration data from both preprocessing and model fitting.
+Use a sklearn pipeline with a point-mode conformal regressor, constructor-level automatic calibration, and explicit interval requests:
 
 ```python
 from sklearn.datasets import make_regression
 from sklearn.linear_model import Ridge
-from sklearn.model_selection import train_test_split
-from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import cross_validate
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from conformity import ConformalRegressor
 
 X, y = make_regression(n_samples=1000, noise=20, random_state=42)
-X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
-reg = ConformalRegressor(
-    make_pipeline(StandardScaler(), Ridge()),
-    calibration_size=0.25,
-    random_state=42,
-    prediction_mode="point",
-)
-reg.fit(X_train, y_train, auto_calibrate=True)
-points = reg.predict(X_test)
-bounds = reg.predict_interval(X_test, alpha=0.1)  # shape (n, 2)
-report = reg.evaluate(X_test, y_test, alpha=0.1)
-```
+X_new = X[:5]  # Replace with new observations in practice.
 
-Alternatively, `fit(X_train, y_train)` followed by `calibrate(X_calib, y_calib)` gives full control over a separate calibration dataset. `calibrate` replaces previous scores and warns on replacement. Refitting or calling `set_params` invalidates calibration; `set_params` also invalidates the fitted model.
-
-## Model-first configuration and sklearn pipelines
-
-Pass your model, pipeline, or `GridSearchCV` as the estimator. Set `auto_calibrate=True` in the constructor to make ordinary `fit(X, y)` split, fit, and calibrate. The default remains `False` for compatibility. Constructor `tts_kwargs` configures split options; explicit fit-time options override them.
-
-```python
-reg = ConformalRegressor(
-    make_pipeline(StandardScaler(), Ridge()),
-    auto_calibrate=True,
-    calibration_size=0.25,
-    random_state=42,
-    prediction_mode="point",
-)
-reg.fit(X_train, y_train)
-points = reg.predict(X_test)
-bounds = reg.predict_interval(X_test, alpha=0.1)
-```
-
-Wrapping a `GridSearchCV` runs its tuning only on the training partition, keeping the internal calibration partition out of preprocessing and tuning. This performs split conformal calibration, not cross-conformal prediction.
-
-Either wrapper can also be the final step of a standard sklearn pipeline:
-
-```python
-pipe = make_pipeline(
-    StandardScaler(),
-    ConformalRegressor(Ridge(), prediction_mode="point"),
-)
-pipe.fit(X_train, y_train)
-# X_calib must be held out before fitting any pipeline steps.
-pipe[-1].calibrate(pipe[:-1].transform(X_calib), y_calib)
-points = pipe.predict(X_test)
-points, bounds = pipe.predict(X_test, return_interval=True, alpha=0.1)
-```
-
-With sklearn metadata routing disabled (the default), the outer pipeline forwards prediction keywords to the regressor. `return_interval=False` forces point predictions; `True` returns points and intervals; omission preserves `prediction_mode`. A standard pipeline does not forward custom `calibrate`, `predict_interval`, or `evaluate` methods: transform inputs using its fitted preprocessing before calling these on the final estimator. For internal splitting, wrap the complete preprocessing pipeline as in the first example; splitting only inside the final step lets preceding transformers fit on the calibration observations.
-
-Classification supports the same outer-pipeline workflow:
-
-```python
-from sklearn.linear_model import LogisticRegression
-from conformity import ConformalClassifier
-
-pipe = make_pipeline(
-    StandardScaler(),
-    ConformalClassifier(LogisticRegression(max_iter=1000), prediction_mode="point"),
-)
-pipe.fit(X_train, y_train)  # classification data; calibration held out first
-pipe[-1].calibrate(pipe[:-1].transform(X_calib), y_calib)
-labels = pipe.predict(X_test)
-label_sets, probabilities = pipe.predict(X_test, return_set=True, alpha=0.1)
-mask = pipe[-1].predict_set(pipe[:-1].transform(X_test), alpha=0.1)
-```
-
-`return_set=False` forces point labels; omission preserves `prediction_mode`. The wrapper always requires an estimator, including when it is a pipeline step. A supplied fitted model is cloned and refitted; there is no prefit mode.
-
-## Automatic calibration with `cross_validate`
-
-Set `auto_calibrate=True` on the wrapper and `prediction_mode="point"` for ordinary sklearn scorers. Each cross-validation clone splits its fold's training observations into model-training and calibration partitions, fits the estimator, then calibrates automatically. The fold's test observations are reserved for scoring. No separate `calibrate` call or fit-time calibration flag is needed. This follows sklearn's [`cross_validate` estimator and scorer interface](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.cross_validate.html).
-
-The wrapper can be the last step of a standard `Pipeline`. Put learned preprocessing inside its estimator so automatic splitting happens before that preprocessing is fitted:
-
-```python
-from sklearn.datasets import make_regression
-from sklearn.linear_model import Ridge
-from sklearn.model_selection import KFold, cross_validate
-from sklearn.pipeline import Pipeline, make_pipeline
-from sklearn.preprocessing import StandardScaler
-from conformity import ConformalRegressor
-
-X, y = make_regression(n_samples=600, noise=20, random_state=42)
 pipe = Pipeline([
+    ("scaler", StandardScaler()),
     ("conformal", ConformalRegressor(
-        estimator=make_pipeline(StandardScaler(), Ridge()),
-        auto_calibrate=True,
-        calibration_size=0.2,
-        random_state=42,
+        Ridge(),
         prediction_mode="point",
+        auto_calibrate=True,
+        random_state=42,
     )),
 ])
 
-# Custom scorers receive the fitted pipeline and that fold's test data.
-def coverage(estimator, X_test, y_test):
-    return estimator.named_steps["conformal"].evaluate(
-        X_test, y_test, alpha=0.1
+results = cross_validate(pipe, X, y, cv=5, scoring="r2")
+
+pipe.fit(X, y)
+points = pipe.predict(X_new)
+points, intervals = pipe.predict(X_new, return_interval=True)
+```
+
+This is the default usage pattern in these docs. `Pipeline` is imported directly from `sklearn.pipeline` and takes a list of named steps. Point mode works with ordinary sklearn scorers; request intervals explicitly with `return_interval=True` (optionally pass `alpha`, which defaults to `0.05`). `cross_validate` fits clones, so fit the original pipeline before predicting.
+
+The outer scaler fits on all observations passed to each pipeline fit, including the final wrapper's internal calibration features. This workflow is supported, but the usual split-conformal coverage proof does not apply to that placement of learned preprocessing. For that guarantee, put learned preprocessing inside the wrapped estimator, as described in [THEORY.md](THEORY.md#pipeline-placement-and-selection).
+
+## Model-first configuration and sklearn pipelines
+
+Pass a model, pipeline, or `GridSearchCV` as the estimator. Set `auto_calibrate=True` in the constructor so ordinary `fit(X, y)` splits, fits, and calibrates. The API default remains `False` for compatibility. Constructor `tts_kwargs` configures split options; explicit fit-time options override them.
+
+With sklearn metadata routing disabled (the default), the outer pipeline forwards prediction keywords to the final wrapper. `return_interval=False` forces points; `True` returns points and intervals; omission follows `prediction_mode`. A standard pipeline does not forward custom `calibrate`, `predict_interval`, or `evaluate` methods: transform inputs with `pipe[:-1].transform(...)` before calling these methods on `pipe[-1]`.
+
+For manual calibration, hold out calibration observations before fitting any pipeline steps, then call `pipe[-1].calibrate(pipe[:-1].transform(X_calib), y_calib)`. Calibration replaces previous scores and warns on replacement. Refitting or calling `set_params` invalidates calibration; `set_params` also invalidates the fitted model. A supplied fitted estimator is cloned and refitted; there is no prefit mode.
+
+## Automatic calibration with `cross_validate`
+
+Use `cross_validate(pipe, X, y, cv=5, scoring="r2")` as in the regression example. Each clone splits its fold's training observations into model-training and calibration partitions. Fold test observations are reserved for scoring. No separate `calibrate` call or fit-time calibration flag is needed.
+
+Set `return_estimator=True` to inspect the fitted fold pipelines; each final wrapper has its own `n_calibration_` and calibration scores. A custom scorer receives `(fitted_pipeline, X_test, y_test)` and returns a scalar. For example:
+
+```python
+def coverage(pipe, X_test, y_test):
+    return pipe[-1].evaluate(
+        pipe[:-1].transform(X_test), y_test, alpha=0.1
     )["coverage"]
 
 results = cross_validate(
-    pipe,
-    X,
-    y,
-    cv=KFold(n_splits=5, shuffle=True, random_state=42),
-    scoring={"mae": "neg_mean_absolute_error", "coverage": coverage},
+    pipe, X, y, cv=5,
+    scoring={"r2": "r2", "coverage": coverage},
     return_estimator=True,
     error_score="raise",
 )
-print(-results["test_mae"])
-print(results["test_coverage"])
-
-# Each returned pipeline contains its own fitted, calibrated wrapper.
-fold_model = results["estimator"][0].named_steps["conformal"]
-print(fold_model.n_calibration_)
-
-# cross_validate fits clones; fit the original pipeline for later use.
-pipe.fit(X, y)
-points, intervals = pipe.predict(X[:5], return_interval=True, alpha=0.1)
 ```
 
-For classification, use `ConformalClassifier(make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000)), auto_calibrate=True, prediction_mode="point", random_state=42)` as the final step and use an ordinary scorer such as `"accuracy"` or `"neg_log_loss"`. The coverage scorer above also works for classification. Class sets are available through `pipe.predict(X_new, return_set=True, alpha=0.1)`. For the marginal coverage interpretation, use fold splitting independent of outcomes, such as shuffled `KFold`; sklearn's default classifier folds are stratified and require care about the sampling assumptions.
-
-`Pipeline([("conformal", ConformalRegressor(Ridge(), auto_calibrate=True, prediction_mode="point"))])` is sufficient when there is no learned preprocessing. An outer pipeline with `StandardScaler()` before `ConformalRegressor(Ridge(), auto_calibrate=True)` runs in `cross_validate`, but the scaler sees the internal calibration features before splitting, so the usual split-conformal coverage proof does not apply. The final wrapper cannot control fitting of earlier outer steps. Use the nested estimator shown above for learned transformations; preceding stateless transformations are also safe.
-
-Cross-validation evaluates separate split-conformal models; it does not combine their calibration scores into a CV+ predictor. Each fold's empirical test coverage can differ from the nominal level. If you choose a model using these scores, reserve fresh calibration observations for the selected model's final coverage guarantee.
+Cross-validation evaluates separate split-conformal models; it does not combine their scores into a CV+ predictor. Empirical coverage can differ from the nominal level. If selecting a model using these scores, reserve fresh calibration observations for its final coverage guarantee. For classification's marginal coverage interpretation, use fold splitting independent of outcomes, such as shuffled `KFold`; sklearn's default classifier folds are stratified and require care about sampling assumptions.
 
 ## Classification
 
@@ -154,22 +80,22 @@ from sklearn.linear_model import LogisticRegression
 from conformity import ConformalClassifier
 
 X, y = load_iris(return_X_y=True)
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
-clf = ConformalClassifier(
-    make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000)),
-    method="aps",  # or "lac" (default)
-    random_state=42,
-    prediction_mode="point",
-)
-clf.fit(X_train, y_train, auto_calibrate=True)
-labels = clf.predict(X_test)
-probabilities = clf.predict_proba(X_test)
-sets = clf.predict_set(X_test, alpha=0.1)  # boolean (n, n_classes)
-label_sets = [clf.classes_[row].tolist() for row in sets]
-p_values = clf.predict_p_values(X_test)
-report = clf.evaluate(X_test, y_test, alpha=0.1)
+X_new = X[:5]  # Replace with new observations in practice.
+pipe = Pipeline([
+    ("scaler", StandardScaler()),
+    ("conformal", ConformalClassifier(
+        LogisticRegression(max_iter=1000),
+        method="aps",  # or "lac" (default)
+        prediction_mode="point",
+        auto_calibrate=True,
+        random_state=42,
+    )),
+])
+results = cross_validate(pipe, X, y, cv=5, scoring="accuracy")
+pipe.fit(X, y)
+labels = pipe.predict(X_new)
+label_sets, probabilities = pipe.predict(X_new, return_set=True)
+sets = pipe[-1].predict_set(pipe[:-1].transform(X_new))  # boolean (n, n_classes)
 ```
 
 Labels can be strings or noncontiguous numbers. Set columns and probability columns follow `classes_`. Calibration labels absent from the fitted estimator are rejected. The estimator must implement `predict_proba` and expose `classes_`. For the coverage theorem, `classes_` must include every possible future label; unseen classes cannot be covered even by an all-class set. Probabilities must be finite, between zero and one, and sum to one per row.
@@ -184,14 +110,13 @@ Empty sets are permitted. P-values count ties conservatively: `(1 + count(calibr
 The default `prediction_mode="conformal"` preserves the original API:
 
 ```python
-points, intervals = reg.set_params(prediction_mode="conformal").fit(
-    X_train, y_train, auto_calibrate=True
-).predict(X_test, alpha=0.1)
+legacy = ConformalRegressor(Ridge(), auto_calibrate=True, prediction_mode="conformal")
+points, intervals = legacy.fit(X, y).predict(X_new, alpha=0.1)
 ```
 
 For regression this returns `(points, intervals)`; for classification `(label_sets, probabilities)`. Legacy label sets use NaN for excluded classes, and object arrays for string labels. Prefer the boolean `predict_set` representation.
 
-Use `prediction_mode="point"` for sklearn scorers, `GridSearchCV`, cross-validation, and ensembles. `predict_point` and `score` always use point predictions and do not require calibration. The explicit `predict_interval` / `predict_set` methods work in either mode and require calibration. In point mode, the `alpha` argument to `predict` is ignored; pass it to the explicit conformal methods.
+Use `prediction_mode="point"` for sklearn scorers, `GridSearchCV`, cross-validation, and ensembles. `predict_point` and `score` always use point predictions and do not require calibration. The explicit `predict_interval` / `predict_set` methods work in either mode and require calibration. In point mode, `alpha` has no effect on point predictions; it controls intervals or sets when explicitly requested.
 
 ```python
 from sklearn.model_selection import GridSearchCV
@@ -200,7 +125,7 @@ search = GridSearchCV(
     {"estimator__alpha": [0.1, 1.0, 10.0]},
     scoring="neg_mean_absolute_error",
 )
-search.fit(X_train, y_train)
+search.fit(X, y)
 search.best_estimator_.calibrate(X_calib, y_calib)  # fresh, held-out observations
 ```
 
@@ -225,7 +150,7 @@ All conformal metrics are also available as standalone package exports and accep
 * `prediction_set_coverage`, `prediction_set_size`, `prediction_set_empty_rate`, `prediction_set_singleton_rate`
 * Legacy diagnostics: `prediction_interval_efficiency`, `prediction_interval_ratio`, `prediction_interval_mse`, `prediction_set_efficiency`
 
-Boolean set coverage requires `classes=clf.classes_`. Metrics accept lists and arrays, reject malformed/empty inputs, and validate weights. Weights change the reported empirical metric, not the conformal guarantee. Interval score combines width and missed-bound penalties; lower is better. Legacy set efficiency is `(size - 1)/(classes - 1)`, can be negative for empty sets, and now returns mean size for single-column sets instead of NaN. Interval ratio rejects zero point predictions rather than dividing by zero.
+Boolean set coverage requires `classes=pipe[-1].classes_`. Metrics accept lists and arrays, reject malformed/empty inputs, and validate weights. Weights change the reported empirical metric, not the conformal guarantee. Interval score combines width and missed-bound penalties; lower is better. Legacy set efficiency is `(size - 1)/(classes - 1)`, can be negative for empty sets, and now returns mean size for single-column sets instead of NaN. Interval ratio rejects zero point predictions rather than dividing by zero.
 
 ## Statistical contract
 
