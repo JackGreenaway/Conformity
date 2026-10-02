@@ -38,9 +38,19 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
         point = self._point(X)
         return np.column_stack((point - threshold, point + threshold))
 
-    def predict(self, X, alpha=0.05):
-        """Return (point, intervals), or points in prediction_mode='point'."""
-        if self.prediction_mode == "point":
+    def predict(self, X, alpha=0.05, *, return_interval=None):
+        """Return points or (points, intervals).
+
+        ``return_interval`` overrides prediction_mode for this call and can be
+        passed through a sklearn Pipeline with metadata routing disabled.
+        """
+        if return_interval is not None and not isinstance(
+            return_interval, (bool, np.bool_)
+        ):
+            raise ValueError("return_interval must be boolean or None")
+        if return_interval is False or (
+            return_interval is None and self.prediction_mode == "point"
+        ):
             return self.predict_point(X)
         X = self._validate_X(X)
         threshold = self._threshold(alpha)

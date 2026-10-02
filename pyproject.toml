@@ -1,6 +1,6 @@
 [project]
 name = "conformity-calib"
-version = "0.1.2"
+version = "0.1.3"
 description = "Conformal prediction library for regression and classification with statistical uncertainty guarantees"
 readme = "README.md"
 authors = [

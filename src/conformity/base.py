@@ -33,11 +33,15 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         self,
         estimator,
         *,
+        auto_calibrate=False,
+        tts_kwargs=None,
         calibration_size=0.2,
         random_state=None,
         prediction_mode="conformal",
     ):
         self.estimator = estimator
+        self.auto_calibrate = auto_calibrate
+        self.tts_kwargs = tts_kwargs
         self.calibration_size = calibration_size
         self.random_state = random_state
         self.prediction_mode = prediction_mode
@@ -90,7 +94,7 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         self,
         X,
         y,
-        auto_calibrate=False,
+        auto_calibrate=None,
         tts_kwargs=None,
         *,
         sample_weight=None,
@@ -99,8 +103,9 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         """Fit a fresh clone; optionally reserve an independent calibration split.
 
         Extra fit parameters are forwarded unchanged to the underlying estimator.
-        Only ``sample_weight`` is sliced with an automatic split; use pipeline
-        parameter names for other fit metadata. Calibration remains unweighted.
+        ``sample_weight`` and step-qualified ``*__sample_weight`` vectors are
+        validated and sliced with an automatic split. Other metadata is passed
+        unchanged. Calibration remains unweighted.
         """
         # Invalidate before attempting a refit, including when fitting fails.
         self._clear_calibration()
@@ -108,6 +113,10 @@ class BaseConformalPredictor(BaseEstimator, ABC):
             self.__dict__.pop(name, None)
         if self.prediction_mode not in ("conformal", "point"):
             raise ValueError("prediction_mode must be 'conformal' or 'point'")
+        if auto_calibrate is None:
+            auto_calibrate = self.auto_calibrate
+        if tts_kwargs is None:
+            tts_kwargs = self.tts_kwargs if auto_calibrate else None
         if not isinstance(auto_calibrate, (bool, np.bool_)):
             raise ValueError("auto_calibrate must be boolean")
         if tts_kwargs is not None and not auto_calibrate:
@@ -122,18 +131,25 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         )
         # Keep DataFrames for column-selecting pipelines, while validating above.
         X_fit = X if hasattr(X, "iloc") else X_checked
-        weights = None
+        # Pipeline fit keywords retain their names; only known per-row weights
+        # are sliced. Arbitrary metadata may be scalar or estimator-specific.
+        weight_params = {
+            name: value
+            for name, value in fit_params.items()
+            if name.endswith("__sample_weight") and value is not None
+        }
         if sample_weight is not None:
-            weights = np.asarray(sample_weight, dtype=float)
+            weight_params["sample_weight"] = sample_weight
+        for name, value in weight_params.items():
+            weights = np.asarray(value, dtype=float)
             if (
                 weights.shape != (len(y_checked),)
                 or not np.isfinite(weights).all()
                 or (weights < 0).any()
                 or weights.sum() <= 0
             ):
-                raise ValueError(
-                    "sample_weight must be finite, nonnegative, and match y"
-                )
+                raise ValueError(f"{name} must be finite, nonnegative, and match y")
+            weight_params[name] = weights
         if auto_calibrate:
             options = {
                 "test_size": self.calibration_size,
@@ -148,12 +164,13 @@ class BaseConformalPredictor(BaseEstimator, ABC):
 
             X_train, X_calib = take(train), take(calib)
             y_train, y_calib = y_checked[train], y_checked[calib]
-            if weights is not None:
-                fit_params["sample_weight"] = weights[train]
+            for name, weights in weight_params.items():
+                if weights[train].sum() <= 0:
+                    raise ValueError(f"{name} must have positive training weight")
+                fit_params[name] = weights[train]
         else:
             X_train, y_train = X_fit, y_checked
-            if weights is not None:
-                fit_params["sample_weight"] = weights
+            fit_params.update(weight_params)
         estimator = clone(self.estimator)
         self._validate_estimator(estimator)
         estimator.fit(X_train, y_train, **fit_params)

@@ -20,12 +20,16 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
         estimator,
         *,
         method="lac",
+        auto_calibrate=False,
+        tts_kwargs=None,
         calibration_size=0.2,
         random_state=None,
         prediction_mode="conformal",
     ):
         super().__init__(
             estimator,
+            auto_calibrate=auto_calibrate,
+            tts_kwargs=tts_kwargs,
             calibration_size=calibration_size,
             random_state=random_state,
             prediction_mode=prediction_mode,
@@ -114,13 +118,19 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
             - np.searchsorted(self.sorted_calibration_scores_, scores, side="left")
         ) / (self.n_calibration_ + 1)
 
-    def predict(self, X, alpha=0.05):
+    def predict(self, X, alpha=0.05, *, return_set=None):
         """Return (label sets with NaN exclusions, probabilities), or point labels.
 
-        Numeric classes retain a numeric legacy array; string classes use an
+        ``return_set=True`` forces the conformal tuple; ``False`` forces labels.
+        This keyword can be forwarded by an outer sklearn Pipeline with
+        metadata routing disabled. Numeric classes retain a numeric legacy array; string classes use an
         object array. Prefer predict_set for a dtype-independent representation.
         """
-        if self.prediction_mode == "point":
+        if return_set is not None and not isinstance(return_set, (bool, np.bool_)):
+            raise ValueError("return_set must be boolean or None")
+        if return_set is False or (
+            return_set is None and self.prediction_mode == "point"
+        ):
             return self.predict_point(X)
         X = self._validate_X(X)
         threshold = self._calibrated_threshold(alpha)
