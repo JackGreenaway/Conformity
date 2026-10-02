@@ -1,429 +1,134 @@
-# Conformity: Conformal Prediction for Uncertainty Quantification
+# Conformity
 
-[![Tests](https://img.shields.io/badge/tests-125%20passed-brightgreen)](./tests/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
-
-Conformity is a Python library providing robust conformal prediction tools for regression and classification tasks. It enables reliable **uncertainty quantification** in machine learning models with statistical guarantees on prediction coverage, allowing practitioners to make more informed decisions with quantified confidence intervals.
-
-## Key Features
-
-- 🎯 **Marginal Coverage Guarantees**: Provides statistically sound prediction intervals and sets with guaranteed coverage under the exchangeability assumption
-- 🔌 **Scikit-Learn Compatible**: Seamless integration with the scikit-learn ecosystem—works with pipelines, cross-validation, and model selection tools
-- 📊 **Flexible Estimators**: Supports any scikit-learn compatible estimator (Linear, ensemble, SVM, etc.)
-- 🛠️ **Comprehensive Metrics**: Built-in functions for evaluating coverage, efficiency, and interval quality
-- 📈 **Regression & Classification**: Unified interface for both prediction intervals (regression) and prediction sets (classification)
-- ⚡ **Lightweight & Fast**: Minimal dependencies with excellent performance characteristics
-
-## Prerequisites
-
-- Python ≥ 3.9
-- [UV](https://docs.astral.sh/uv/) (recommended package manager)
-- NumPy ≥ 2.0.2
-- Scikit-learn ≥ 1.6.1
-
-## Installation
-
-### Using UV (Recommended)
-
-```bash
-git clone https://github.com/your-username/conformity.git
-cd conformity
-uv sync
-```
-
-### Using pip
+Split conformal prediction for sklearn-style regression and probabilistic classification estimators. Python 3.9+, NumPy 2+, and scikit-learn 1.6.1+.
 
 ```bash
 pip install conformity-calib
 ```
 
-## Quick Start
+## Regression
 
-### Conformal Regression with Prediction Intervals
+Put preprocessing **inside** the wrapped pipeline. The automatic split then excludes calibration data from both preprocessing and model fitting.
 
 ```python
-import numpy as np
-from sklearn.linear_model import LinearRegression
+from sklearn.datasets import make_regression
+from sklearn.linear_model import Ridge
 from sklearn.model_selection import train_test_split
-from conformity.regressor import ConformalRegressor
-
-# Generate sample data
-np.random.seed(42)
-X = np.random.rand(300, 5)
-y = 3 * X[:, 0] + 2 * X[:, 1] + np.random.randn(300) * 0.5
-
-# Split data: training, calibration, and test
-X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
-X_calib, X_test, y_calib, y_test = train_test_split(X_rest, y_rest, test_size=0.5, random_state=42)
-
-# Create and fit the conformal regressor
-regressor = ConformalRegressor(estimator=LinearRegression())
-regressor.fit(X_train, y_train)
-regressor.calibrate(X_calib, y_calib)
-
-# Make predictions with uncertainty intervals
-y_pred, intervals = regressor.predict(X_test, alpha=0.1)
-
-print("Predictions:", y_pred[:5])
-print("90% Prediction Intervals:")
-print(intervals[:5])
-print(f"Quantile Level: {regressor.q_level_:.4f}")
-```
-
-**Output:**
-
-```
-Predictions: [2.34  1.89  3.12  2.01  2.87]
-90% Prediction Intervals:
-[[1.42  3.26]
- [0.97  2.81]
- [2.20  4.04]
- [1.09  2.93]
- [1.95  3.79]]
-Quantile Level: 0.9200
-```
-
-### Conformal Classification with Prediction Sets
-
-```python
-import numpy as np
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-from sklearn.datasets import make_classification
-from conformity.classifier import ConformalClassifier
-
-# Generate sample data
-X, y = make_classification(n_samples=300, n_features=10, n_classes=3,
-                           n_informative=8, random_state=42)
-
-# Split data
-X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.4, random_state=42)
-X_calib, X_test, y_calib, y_test = train_test_split(X_rest, y_rest, test_size=0.5, random_state=42)
-
-# Create and fit the conformal classifier
-classifier = ConformalClassifier(estimator=LogisticRegression(max_iter=1000))
-classifier.fit(X_train, y_train)
-classifier.calibrate(X_calib, y_calib)
-
-# Make predictions with prediction sets
-pred_set, class_probs = classifier.predict(X_test, alpha=0.1)
-
-print("Prediction Sets (classes in set):", pred_set[:5])
-print("Class Probabilities:", class_probs[:5])
-print(f"Quantile Level: {classifier.q_level_:.4f}")
-```
-
-## Evaluation Metrics
-
-Conformity provides comprehensive metrics for evaluating prediction quality:
-
-```python
-from conformity.metrics import (
-    prediction_interval_coverage,
-    prediction_interval_efficiency,
-    prediction_set_coverage,
-    prediction_interval_mse,
-)
-
-# Evaluate regression intervals
-coverage = prediction_interval_coverage(y_true=y_test, prediction_intervals=intervals)
-efficiency = prediction_interval_efficiency(point_prediction=y_pred, prediction_intervals=intervals)
-mse_lower, mse_upper = prediction_interval_mse(y_true=y_test, prediction_intervals=intervals)
-
-print(f"Coverage: {coverage:.3f}")          # Should be close to 1 - alpha
-print(f"Efficiency (avg width): {efficiency:.3f}")
-print(f"Lower MSE: {mse_lower:.3f}, Upper MSE: {mse_upper:.3f}")
-
-# Evaluate classification sets
-coverage = prediction_set_coverage(y_true=y_test, prediction_set=pred_set)
-print(f"Classification Coverage: {coverage:.3f}")
-```
-
-## Advanced Usage
-
-### Auto-Calibration
-
-Automatically split data for training and calibration:
-
-```python
-from conformity.regressor import ConformalRegressor
-from sklearn.linear_model import LinearRegression
-
-regressor = ConformalRegressor(LinearRegression())
-
-# Fit and calibrate in one step
-regressor.fit(X, y, auto_calibrate=True, tts_kwargs={'test_size': 0.3, 'random_state': 42})
-
-# Now ready to predict
-y_pred, intervals, _ = regressor.predict(X_test, alpha=0.1)
-```
-
-### Integration with Scikit-Learn Pipelines
-
-```python
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LinearRegression
-from conformity.regressor import ConformalRegressor
+from conformity import ConformalRegressor
 
-# Create a pipeline
-pipe = Pipeline([
-    ('scaler', StandardScaler()),
-    ('conformal_regressor', ConformalRegressor(LinearRegression()))
-])
-
-# Use with cross-validation or model selection
-from sklearn.model_selection import cross_val_score
-scores = cross_val_score(pipe, X, y, cv=5, scoring='neg_mean_squared_error')
+X, y = make_regression(n_samples=1000, noise=20, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+reg = ConformalRegressor(
+    make_pipeline(StandardScaler(), Ridge()),
+    calibration_size=0.25,
+    random_state=42,
+    prediction_mode="point",
+)
+reg.fit(X_train, y_train, auto_calibrate=True)
+points = reg.predict(X_test)
+bounds = reg.predict_interval(X_test, alpha=0.1)  # shape (n, 2)
+report = reg.evaluate(X_test, y_test, alpha=0.1)
 ```
 
-### Using Different Estimators
+Alternatively, `fit(X_train, y_train)` followed by `calibrate(X_calib, y_calib)` gives full control over a separate calibration dataset. `calibrate` replaces previous scores and warns on replacement. Refitting or calling `set_params` invalidates calibration; `set_params` also invalidates the fitted model.
+
+## Classification
 
 ```python
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingClassifier
-from conformity.regressor import ConformalRegressor
-from conformity.classifier import ConformalClassifier
+from sklearn.datasets import load_iris
+from sklearn.linear_model import LogisticRegression
+from conformity import ConformalClassifier
 
-# With Random Forest
-rf_regressor = ConformalRegressor(RandomForestRegressor(n_estimators=100))
-
-# With Gradient Boosting
-gb_classifier = ConformalClassifier(GradientBoostingClassifier(n_estimators=100))
+X, y = load_iris(return_X_y=True)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+clf = ConformalClassifier(
+    make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000)),
+    method="aps",  # or "lac" (default)
+    random_state=42,
+    prediction_mode="point",
+)
+clf.fit(X_train, y_train, auto_calibrate=True)
+labels = clf.predict(X_test)
+probabilities = clf.predict_proba(X_test)
+sets = clf.predict_set(X_test, alpha=0.1)  # boolean (n, n_classes)
+label_sets = [clf.classes_[row].tolist() for row in sets]
+p_values = clf.predict_p_values(X_test)
+report = clf.evaluate(X_test, y_test, alpha=0.1)
 ```
 
-## API Reference
+Labels can be strings or noncontiguous numbers. Set columns and probability columns follow `classes_`. Calibration labels absent from the fitted estimator are rejected. The estimator must implement `predict_proba` and expose `classes_`. Probabilities must be finite, between zero and one, and sum to one per row.
 
-### ConformalRegressor
+* **LAC:** score a candidate class by `1 - probability`.
+* **APS:** score it by cumulative descending probability up to and including that class. This implementation is deterministic and conservative; ties follow stable `classes_` order. It does not implement randomized APS or RAPS.
 
-**Parameters:**
+Empty sets are permitted. P-values count ties conservatively: `(1 + count(calibration_score >= candidate_score)) / (n + 1)`.
 
-- `estimator` (RegressorMixin): Scikit-learn compatible regression estimator
+## sklearn compatibility and migration
 
-**Methods:**
+The default `prediction_mode="conformal"` preserves the original API:
 
-- `fit(X, y, auto_calibrate=False, tts_kwargs=None)`: Fit the estimator to data
-- `calibrate(X, y)`: Calibrate using held-out data
-- `predict(X, alpha=0.05)`: Predict with intervals
-  - Returns: `(y_pred, intervals, q_level)`
+```python
+points, intervals = reg.set_params(prediction_mode="conformal").fit(
+    X_train, y_train, auto_calibrate=True
+).predict(X_test, alpha=0.1)
+```
 
-### ConformalClassifier
+For regression this returns `(points, intervals)`; for classification `(label_sets, probabilities)`. Legacy label sets use NaN for excluded classes, and object arrays for string labels. Prefer the boolean `predict_set` representation.
 
-**Parameters:**
+Use `prediction_mode="point"` for sklearn scorers, `GridSearchCV`, cross-validation, and ensembles. `predict_point` and `score` always use point predictions and do not require calibration. The explicit `predict_interval` / `predict_set` methods work in either mode and require calibration. In point mode, the `alpha` argument to `predict` is ignored; pass it to the explicit conformal methods.
 
-- `estimator` (ClassifierMixin): Scikit-learn compatible classification estimator
+```python
+from sklearn.model_selection import GridSearchCV
+search = GridSearchCV(
+    ConformalRegressor(Ridge(), prediction_mode="point"),
+    {"estimator__alpha": [0.1, 1.0, 10.0]},
+    scoring="neg_mean_absolute_error",
+)
+search.fit(X_train, y_train)
+search.best_estimator_.calibrate(X_calib, y_calib)  # fresh, held-out observations
+```
 
-**Methods:**
+Both wrappers support cloning, nested estimator parameters, sparse CSR/CSC matrices, feature-count validation, and numeric DataFrames with feature-name validation. DataFrames are preserved for column-selecting pipelines. Sparse inputs still require support in the wrapped estimator. Multi-output regression, multilabel classification, precomputed kernels, metadata routing, and arbitrary structured/raw-text inputs are outside the current API.
 
-- `fit(X, y, auto_calibrate=False, tts_kwargs=None)`: Fit the estimator to data
-- `calibrate(X, y)`: Calibrate using held-out data
-- `predict(X, alpha=0.05)`: Predict with sets
-  - Returns: `(pred_set, boolean_set, class_probs, q_level)`
+## Controls and metrics
 
-### Metrics
+Constructor options are `estimator`, `calibration_size`, `random_state`, and `prediction_mode`; classifiers additionally expose `method`. `fit(..., auto_calibrate=True, tts_kwargs={...})` accepts `train_test_split` options overriding the constructor defaults. Splitting is random and unstratified by default. Stratifying calibration by outcome can change the exchangeability assumptions; use it deliberately rather than relying on an automatic classification default.
 
-All metrics accept array-like inputs:
+`fit(..., sample_weight=weights, **fit_params)` forwards estimator fitting options. Sample weights are validated and split alongside training observations. Other fit parameters are passed unchanged: provide metadata aligned to the training partition, or split manually. Pipelines may require step-qualified parameters such as `ridge__sample_weight`; these are not automatically sliced. Calibration is unweighted.
 
-- `prediction_interval_coverage(y_true, prediction_intervals)`: Fraction of true values in intervals
-- `prediction_interval_efficiency(point_prediction, prediction_intervals, relative=False)`: Average interval width
-- `prediction_set_coverage(y_true, prediction_set)`: Fraction of true values in sets
-- `prediction_set_efficiency(prediction_set)`: Average set size
-- `prediction_interval_ratio(point_predictions, prediction_intervals)`: Ratio of upper bound to predictions
-- `prediction_interval_mse(y_true, prediction_intervals)`: MSE of interval bounds
+`evaluate(..., sample_weight=...)` returns:
 
-## How It Works
+| Task | Metrics |
+| --- | --- |
+| Regression | R², MAE, MSE, coverage, mean width, interval score |
+| Classification | accuracy, log loss, coverage, mean set size, empty rate, singleton rate |
 
-Conformal prediction is a distribution-free approach that provides statistical guarantees on uncertainty quantification:
+All conformal metrics are also available as standalone package exports and accept optional evaluation weights:
 
-1. **Split Data**: Divide data into training and calibration sets
-2. **Fit Model**: Train your base estimator on training data
-3. **Calibrate**: Compute non-conformity scores on calibration data
-4. **Predict**: Generate prediction intervals/sets with coverage guarantees
+* `prediction_interval_coverage`, `prediction_interval_width`, `interval_score`
+* `prediction_set_coverage`, `prediction_set_size`, `prediction_set_empty_rate`, `prediction_set_singleton_rate`
+* Legacy diagnostics: `prediction_interval_efficiency`, `prediction_interval_ratio`, `prediction_interval_mse`, `prediction_set_efficiency`
 
-The beauty of conformal prediction is that it makes **no distributional assumptions** while providing rigorous coverage guarantees under exchangeability.
+Boolean set coverage requires `classes=clf.classes_`. Metrics accept lists and arrays, reject malformed/empty inputs, and validate weights. Weights change the reported empirical metric, not the conformal guarantee. Interval score combines width and missed-bound penalties; lower is better. Legacy set efficiency is `(size - 1)/(classes - 1)`, can be negative for empty sets, and now returns mean size for single-column sets instead of NaN. Interval ratio rejects zero point predictions rather than dividing by zero.
 
-### Coverage Guarantee
+## Statistical contract
 
-For any miscoverage level $\alpha \in (0, 1)$, the true observation falls within the prediction set/interval with probability at least $1 - \alpha$.
+With `n` held-out calibration scores, the threshold is the `ceil((n + 1) * (1 - alpha))`-th order statistic, including an infinite sentinel at rank `n + 1`. There is no interpolation or clipping. If the requested rank exceeds `n`, regression intervals are unbounded and classification sets contain every fitted class; a warning explains why. Prediction includes candidates whose scores equal the threshold.
 
-## Examples
+Under exchangeability of calibration and future observations, and independence from model fitting and tuning, split conformal gives marginal coverage of at least `1 - alpha`. It does **not** promise coverage for every individual, subgroup, or realized test batch. Reusing training data as calibration, tuning on calibration outcomes, time dependence, and distribution shift can invalidate this guarantee. Keep an independent test set for evaluation. Extremely small alpha requires large calibration sets to produce finite thresholds.
 
-See the [examples](./examples/) directory for detailed notebooks:
+These conventions follow the [split conformal regression literature](https://www.stat.berkeley.edu/~ryantibs/papers/conformal-jasa.pdf) and the [sklearn estimator interface](https://scikit-learn.org/stable/developers/develop.html). Sorted calibration scores are cached once; threshold lookup is constant-time, and p-values use binary search rather than sorting on every prediction.
 
-- [Regression with Continuous Targets](./examples/regression_example.ipynb)
-- [Classification with Discrete Classes](./examples/classification_example.ipynb)
-- [Comparison with Uncertainty Quantification Methods](./examples/comparison.ipynb)
-- [Real-World Applications](./examples/real_world.ipynb)
-
-## Running Tests
+## Development
 
 ```bash
-# Run all tests
-uv run pytest tests/
-
-# Run with coverage
-uv run pytest tests/ --cov=conformity --cov-report=html
-
-# Run specific test file
-uv run pytest tests/test_conformal_regressor.py -v
+uv sync --group dev
+uv run pytest
+uv run ruff check src tests/test_safety_and_api.py
 ```
 
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes and add tests
-4. Run `uv run pytest` to ensure all tests pass
-5. Submit a pull request
-
-## References
-
-- Vovk, V., Gammerman, A., & Shafer, G. (1999). "[Algorithmic Learning Theory](https://www.springer.com/gp/book/9783540663768)"
-- Barber, R. F., Candes, E. J., Ramdas, A., & Tibshirani, R. J. (2023). "[Conformal Prediction Under Covariate Shift](https://arxiv.org/abs/1904.06857)"
-- Angelopoulos, A. N., & Bates, S. (2021). "[A gentle introduction to conformal prediction and distribution-free uncertainty quantification](https://arxiv.org/abs/2107.03541)"
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-This library is inspired by the excellent work in conformal prediction and uncertainty quantification. Special thanks to the scikit-learn community for providing such a well-designed API foundation.
-
-## Support & Questions
-
-- **Issues**: [GitHub Issues](https://github.com/your-username/conformity/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/conformity/discussions)
-- **Documentation**: Full API docs available in [DOCUMENTATION.md](./docs/DOCUMENTATION.md)
-
-```python
-
-efficiency = prediction_interval_efficiency(
-point_prediction=y_pred, prediction_intervals=intervals
-)
-print(f"Prediction Interval Efficiency: {efficiency:.03f}")
-
-ratio = prediction_interval_ratio(
-point_predictions=y_pred, prediction_intervals=intervals
-)
-print(f"Prediction Interval Ratio: {ratio:.03f}")
-
-mse = prediction_interval_mse(y_true=y_pred, prediction_intervals=intervals)
-print(f"Prediction Interval MSE: {mse[0]}, {mse[1]}")
-```
-
-```python
-Prediction Set Coverage: 0.950
-Prediction Set Efficiency: 1.842
-Prediction Set Ratio: 3.758
-Prediction Set MSE: 0.848109134815186, 0.8481091348151861
-```
-
-### Example: Conformal Classifier
-
-```python
-import numpy as np
-from pprint import pprint
-from sklearn.datasets import make_classification
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-
-from conformity.classifier import ConformalClassifier
-
-np.random.seed(653)
-
-# Generate synthetic data
-n_samples = 500
-
-x, y = make_classification(
-    n_samples=n_samples, n_features=5, n_clusters_per_class=1, n_classes=3
-)
-
-# Create train, calib, and test sets
-X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.05, shuffle=True)
-X_train, X_calib, y_train, y_calib = train_test_split(
-    X_train, y_train, test_size=0.3, shuffle=True
-)
-
-
-# Initialise and fit the classifier
-classifier = ConformalClassifier(estimator=RandomForestClassifier())
-classifier.fit(X_train, y_train)
-
-# Calibrate the model
-classifier.calibrate(X_calib, y_calib)
-
-# Make predictions with prediction sets
-pred_set, boolean_set, y_prob, q_level = classifier.predict(X_test, alpha=0.05)
-
-print("Prediction Sets:")
-pprint(pred_set[:5])
-
-print("\nBoolean Set:")
-pprint(boolean_set[:5])
-```
-
-```
-Prediction Sets:
-array([[nan, nan,  2.],
-       [nan, nan,  2.],
-       [nan, nan,  2.],
-       [nan, nan,  2.],
-       [ 0., nan, nan]])
-
-Boolean Set:
-array([[False, False,  True],
-       [False, False,  True],
-       [False, False,  True],
-       [False, False,  True],
-       [ True, False, False]])
-```
-
-#### Model Validation
-
-```python
-from conformity.metrics import prediction_set_coverage, prediction_set_efficiency
-
-coverage = prediction_set_coverage(y_true=y_test, prediction_set=pred_set)
-print(f"Prediction Set Coverage: {coverage:.03f}")
-
-efficiency = prediction_set_efficiency(prediction_set=pred_set)
-print(f"Prediction Set Coverage: {efficiency:.03f}")
-```
-
-```
-Prediction Set Coverage: 0.960
-Prediction Set Efficiency: 0.000
-```
-
-### Development
-
-For development purposes, install the `dev` dependencies:
-
-```bash
-uv install --group dev
-```
-
-### Building the Project
-
-To build the project for distribution:
-
-```bash
-uv build
-```
-
-## Features
-
-- **Conformal Regressor**: Provides prediction intervals for regression tasks.
-- **Conformal Classifier**: Generates prediction sets for classification tasks.
-- **Metrics**: Includes utilities to evaluate coverage and efficiency of prediction intervals and sets.
-
-## Contributing
-
-Contributions are welcome! To contribute:
-
-1. Fork the repository.
-2. Create a new branch for your feature or bug fix.
-3. Commit your changes and push the branch.
-4. Open a pull request.
+See [DOCUMENTATION.md](DOCUMENTATION.md) for lifecycle details and [REVIEW.md](REVIEW.md) for the review findings, changes, and remaining boundaries.

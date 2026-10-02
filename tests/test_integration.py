@@ -5,14 +5,12 @@ import pytest
 from sklearn.datasets import make_regression, make_classification
 from sklearn.linear_model import LinearRegression, LogisticRegression, Ridge, Lasso
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from sklearn.svm import SVR, SVC
 from sklearn.model_selection import train_test_split
 
 from conformity.classifier import ConformalClassifier
 from conformity.regressor import ConformalRegressor
 from conformity.metrics import (
     prediction_interval_coverage,
-    prediction_interval_efficiency,
     prediction_set_coverage,
 )
 
@@ -163,7 +161,7 @@ class TestBoundaryConditions:
         # With small calibration set, large alpha can trigger clipping warning
         import warnings
 
-        with warnings.catch_warnings(record=True) as w:
+        with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
             y_pred, intervals = reg.predict(X_test, alpha=0.95)
             # May or may not warn depending on calibration size, just check it works

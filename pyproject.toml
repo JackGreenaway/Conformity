@@ -1,6 +1,6 @@
 [project]
 name = "conformity-calib"
-version = "0.1.1"
+version = "0.1.2"
 description = "Conformal prediction library for regression and classification with statistical uncertainty guarantees"
 readme = "README.md"
 authors = [
@@ -28,12 +28,6 @@ dependencies = [
   "scikit-learn>=1.6.1",
   "typing-extensions>=4.15.0",
 ]
-
-[project.urls]
-Homepage = "https://github.com/your-username/conformity"
-Documentation = "https://github.com/your-username/conformity#documentation"
-Repository = "https://github.com/your-username/conformity.git"
-Issues = "https://github.com/your-username/conformity/issues"
 
 [build-system]
 requires = ["hatchling"]

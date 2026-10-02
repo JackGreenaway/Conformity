@@ -1,168 +1,175 @@
+"""Label-safe least ambiguous and adaptive prediction sets."""
+
 import numpy as np
-import warnings
-from conformity.base import BaseConformalPredictor
 from sklearn.base import ClassifierMixin
-from sklearn.utils.validation import check_array, check_is_fitted
-from numpy.typing import ArrayLike
-from typing_extensions import Self
-from typing import Tuple
+from sklearn.metrics import accuracy_score
+from .base import BaseConformalPredictor
 
 
-class ConformalClassifier(BaseConformalPredictor, ClassifierMixin):
-    """
-    Conformal classifier for constructing prediction sets using conformal prediction.
+class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
+    """Split conformal classification using LAC or deterministic APS scores.
 
-    This class wraps a classification estimator and provides calibrated prediction sets
-    with guaranteed marginal coverage under exchangeability assumption. It is compatible
-    with scikit-learn's ecosystem tools including pipelines and cross-validation.
-
-    Parameters
-    ----------
-    estimator : ClassifierMixin
-        A classification estimator implementing the scikit-learn interface with
-        `fit`, `predict`, and `predict_proba` methods.
-
-    Attributes
-    ----------
-    estimator_ : ClassifierMixin
-        The fitted base estimator (set after calling `fit`).
-    is_calibrated_ : bool
-        Whether the classifier has been calibrated. Initially False.
-    calibration_non_conformity : ndarray of shape (n_calib,)
-        Non-conformity scores computed on the calibration set.
-    n_calib : int
-        Number of calibration samples.
-
-    Examples
-    --------
-    >>> from sklearn.linear_model import LogisticRegression
-    >>> from sklearn.datasets import make_classification
-    >>> from sklearn.model_selection import train_test_split
-    >>> X, y = make_classification(n_samples=100, random_state=42)
-    >>> X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    >>> X_train, X_calib, y_train, y_calib = train_test_split(X_train, y_train, test_size=0.3, random_state=42)
-    >>> clf = ConformalClassifier(LogisticRegression(max_iter=1000))
-    >>> clf.fit(X_train, y_train)
-    >>> clf.calibrate(X_calib, y_calib)
-    >>> pred_set, _, _, _ = clf.predict(X_test, alpha=0.1)
+    ``method='lac'`` scores 1 - probability; ``'aps'`` scores cumulative
+    descending probability through the candidate class. Ties use stable class
+    order. ``predict_set`` returns a boolean matrix in ``classes_`` order, which
+    works with any sklearn class labels. Empty prediction sets are permitted.
     """
 
-    _estimator_type = "classifier"
+    def __init__(
+        self,
+        estimator,
+        *,
+        method="lac",
+        calibration_size=0.2,
+        random_state=None,
+        prediction_mode="conformal",
+    ):
+        super().__init__(
+            estimator,
+            calibration_size=calibration_size,
+            random_state=random_state,
+            prediction_mode=prediction_mode,
+        )
+        self.method = method
 
-    def __init__(self, estimator: ClassifierMixin) -> None:
-        """
-        Initialise the conformal classifier.
+    def _validate_estimator(self, estimator):
+        super()._validate_estimator(estimator)
+        if self.method not in ("lac", "aps"):
+            raise ValueError("method must be 'lac' or 'aps'")
+        if not callable(getattr(estimator, "predict_proba", None)):
+            raise TypeError("classification estimator must implement predict_proba")
 
-        Parameters
-        ----------
-        estimator : ClassifierMixin
-            A classification estimator implementing the scikit-learn interface.
-        """
-        super().__init__(estimator=estimator)  # type: ignore
-
-    def calibrate(self, X: ArrayLike, y: ArrayLike) -> Self:
-        """
-        Calibrate the conformal classifier using the provided calibration data.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_calib_samples, n_features)
-            Calibration features.
-        y : array-like of shape (n_calib_samples,)
-            Calibration targets.
-
-        Returns
-        -------
-        self : ConformalClassifier
-            Calibrated estimator.
-        """
-        check_is_fitted(self, "estimator_")
-        X = check_array(X, accept_sparse=False)
-        y = np.asarray(y)
-
-        if X.shape[0] != y.shape[0]:
+    def _probabilities(self, X):
+        proba = np.asarray(self.estimator_.predict_proba(X), dtype=float)
+        if proba.shape != (X.shape[0], len(self.classes_)):
+            raise ValueError("predict_proba shape must match samples and classes_")
+        if (
+            not np.isfinite(proba).all()
+            or (proba < 0).any()
+            or (proba > 1).any()
+            or not np.allclose(proba.sum(axis=1), 1, atol=1e-7)
+        ):
             raise ValueError(
-                f"X and y have inconsistent numbers of samples: {X.shape[0]} != {y.shape[0]}"
+                "predict_proba must contain finite probabilities summing to one"
             )
+        return proba
 
-        if self.is_calibrated_:
-            warnings.warn(
-                "The estimator is already calibrated. Recalibrating may affect prediction quality.",
-                UserWarning,
+    def _candidate_scores(self, proba):
+        if self.method == "lac":
+            return 1 - proba
+        if self.method != "aps":
+            raise ValueError("method must be 'lac' or 'aps'")
+        order = np.argsort(-proba, axis=1, kind="stable")
+        cumulative = np.cumsum(np.take_along_axis(proba, order, axis=1), axis=1)
+        scores = np.empty_like(proba)
+        np.put_along_axis(scores, order, cumulative, axis=1)
+        return scores
+
+    def calibrate(self, X, y):
+        X, y = self._validate_calibration(X, y)
+        matches = y[:, None] == self.classes_[None, :]
+        if not matches.any(axis=1).all():
+            raise ValueError(
+                "calibration targets contain labels absent from fitted classes_"
             )
-
-        y_prob = self.estimator_.predict_proba(X)
-        true_probs = y_prob[np.arange(y_prob.shape[0]), y.astype(int)]
-        self.calibration_non_conformity = 1 - true_probs
-        self.n_calib = self.calibration_non_conformity.shape[0]
-        self.is_calibrated_ = True
-
+        scores = self._candidate_scores(self._probabilities(X))
+        self._store_scores(scores[np.arange(len(y)), matches.argmax(axis=1)])
+        self.method_ = self.method
         return self
 
-    def predict(
-        self, X: ArrayLike, alpha: float = 0.05
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Make predictions with prediction sets.
+    def _calibrated_threshold(self, alpha):
+        threshold = self._threshold(alpha)
+        if self.method != self.method_:
+            raise ValueError(
+                "method changed after calibration; recalibrate before prediction"
+            )
+        return threshold
 
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Features for which to make predictions.
-        alpha : float, default=0.05
-            Significance level for the prediction sets. Controls the coverage guarantee.
-            Recommended range is (0, 1).
+    def predict_point(self, X):
+        """Return the wrapped estimator's labels without calibration."""
+        X = self._validate_X(X)
+        return self.estimator_.predict(X)
 
-        Returns
-        -------
-        tuple of (ndarray, ndarray)
-            - pred_set : ndarray of shape (n_samples, n_classes)
-                Prediction sets for each sample. NaN indicates classes not in the set.
-            - y_proba : ndarray of shape (n_samples, n_classes)
-                Class probabilities from the base estimator.
+    def predict_proba(self, X):
+        """Return validated probabilities in classes_ order."""
+        return self._probabilities(self._validate_X(X))
 
-        Attributes Set
-        ---------------
-        alpha_used_ : float
-            The alpha value used for this prediction.
-        q_level_ : float
-            The quantile level used for computing the prediction sets.
+    def predict_set(self, X, alpha=0.05):
+        """Return a boolean membership matrix of shape (n_samples, n_classes)."""
+        X = self._validate_X(X)
+        threshold = self._calibrated_threshold(alpha)
+        return self._candidate_scores(self._probabilities(X)) <= threshold
 
-        Raises
-        ------
-        RuntimeError
-            If the classifier has not been calibrated before prediction.
-        """
-        check_is_fitted(self, "estimator_")
-        X = check_array(X, accept_sparse=False)
-
+    def predict_p_values(self, X):
+        """Return conservative conformal p-values, including calibration ties."""
+        X = self._validate_X(X)
         if not self.is_calibrated_:
-            raise RuntimeError(
-                "The estimator must be calibrated before making predictions. "
-                "Call the calibrate method with calibration data."
-            )
-
-        y_prob = self.estimator_.predict_proba(X)
-        non_conformity = 1 - y_prob
-
-        conformity_score = (
-            self.calibration_non_conformity.shape[0]
-            - np.searchsorted(
-                np.sort(self.calibration_non_conformity), non_conformity, side="right"
-            )
+            raise RuntimeError("The estimator must be calibrated")
+        if self.method != self.method_:
+            raise ValueError("method changed after calibration; recalibrate")
+        scores = self._candidate_scores(self._probabilities(X))
+        return (
+            self.n_calibration_
             + 1
-        ) / (self.n_calib + 1)
+            - np.searchsorted(self.sorted_calibration_scores_, scores, side="left")
+        ) / (self.n_calibration_ + 1)
 
-        q_level = np.ceil((self.n_calib + 1) * (1 - alpha)) / self.n_calib
+    def predict(self, X, alpha=0.05):
+        """Return (label sets with NaN exclusions, probabilities), or point labels.
 
-        self.alpha_used_ = alpha
-        self.q_level_ = q_level
+        Numeric classes retain a numeric legacy array; string classes use an
+        object array. Prefer predict_set for a dtype-independent representation.
+        """
+        if self.prediction_mode == "point":
+            return self.predict_point(X)
+        X = self._validate_X(X)
+        threshold = self._calibrated_threshold(alpha)
+        proba = self._probabilities(X)
+        mask = self._candidate_scores(proba) <= threshold
+        dtype = float if np.issubdtype(self.classes_.dtype, np.number) else object
+        if np.issubdtype(self.classes_.dtype, np.integer) and any(
+            abs(int(label)) > 2**53 for label in self.classes_
+        ):
+            dtype = object  # float NaN sentinels must not round large integer labels
+        labels = np.full(mask.shape, np.nan, dtype=dtype)
+        labels[mask] = np.broadcast_to(self.classes_, mask.shape)[mask]
+        return labels, proba
 
-        boolean_set = conformity_score > (1 - q_level)
-        pred_set = np.where(
-            boolean_set,
-            np.vstack([self.estimator_.classes_] * X.shape[0]),  # type: ignore[attr-defined]
-            np.nan,
+    def score(self, X, y, sample_weight=None):
+        """Return point accuracy regardless of prediction_mode."""
+        return accuracy_score(y, self.predict_point(X), sample_weight=sample_weight)
+
+    def evaluate(self, X, y, alpha=0.05, *, sample_weight=None):
+        """Return accuracy, log loss, coverage and prediction set diagnostics."""
+        from sklearn.metrics import log_loss
+        from .metrics import (
+            prediction_set_coverage,
+            prediction_set_size,
+            prediction_set_empty_rate,
+            prediction_set_singleton_rate,
         )
 
-        return (pred_set, y_prob)
+        X = self._validate_X(X)
+        threshold = self._calibrated_threshold(alpha)
+        proba = self._probabilities(X)
+        mask = self._candidate_scores(proba) <= threshold
+        if len(self.classes_) == 1:
+            if np.asarray(y).shape != (X.shape[0],) or not np.all(
+                np.asarray(y) == self.classes_[0]
+            ):
+                raise ValueError("y contains targets absent from fitted classes_")
+            loss = 0.0
+        else:
+            loss = log_loss(y, proba, labels=self.classes_, sample_weight=sample_weight)
+        return {
+            "accuracy": self.score(X, y, sample_weight),
+            "log_loss": loss,
+            "coverage": prediction_set_coverage(
+                y, mask, classes=self.classes_, sample_weight=sample_weight
+            ),
+            "mean_size": prediction_set_size(mask, sample_weight=sample_weight),
+            "empty_rate": prediction_set_empty_rate(mask, sample_weight=sample_weight),
+            "singleton_rate": prediction_set_singleton_rate(
+                mask, sample_weight=sample_weight
+            ),
+        }

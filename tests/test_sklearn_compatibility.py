@@ -7,13 +7,10 @@ from sklearn.datasets import make_regression, make_classification
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.model_selection import (
     train_test_split,
-    cross_val_score,
-    cross_validate,
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from conformity.base import BaseConformalPredictor
 from conformity.classifier import ConformalClassifier
 from conformity.regressor import ConformalRegressor
 
@@ -102,7 +99,7 @@ class TestClone:
 
         reg_cloned = clone(reg)
         assert not hasattr(reg_cloned, "estimator_")
-        assert reg_cloned.is_calibrated_ == False
+        assert not reg_cloned.is_calibrated_
 
 
 class TestPipelineCompatibility:

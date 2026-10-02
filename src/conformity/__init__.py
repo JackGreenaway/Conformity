@@ -15,6 +15,11 @@ from .metrics import (
     prediction_interval_efficiency,
     prediction_interval_ratio,
     prediction_interval_mse,
+    prediction_interval_width,
+    interval_score,
+    prediction_set_size,
+    prediction_set_empty_rate,
+    prediction_set_singleton_rate,
 )
 
 __version__ = "0.1.1"
@@ -29,4 +34,9 @@ __all__ = [
     "prediction_interval_efficiency",
     "prediction_interval_ratio",
     "prediction_interval_mse",
+    "prediction_interval_width",
+    "interval_score",
+    "prediction_set_size",
+    "prediction_set_empty_rate",
+    "prediction_set_singleton_rate",
 ]

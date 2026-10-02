@@ -65,9 +65,9 @@ class TestPredictionSetEfficiency:
     def test_all_singletons(self):
         """Test with single-element prediction sets (max efficiency)."""
         prediction_set = np.array([[0.0], [1.0], [2.0], [1.0]])
-        # This case produces NaN because (1-1)/(1-1) = 0/0
+        # Single-column sets use their mean size rather than dividing by zero.
         efficiency = prediction_set_efficiency(prediction_set)
-        assert np.isnan(efficiency)  # Expected behavior for single-element sets
+        assert efficiency == 1.0
 
     def test_all_full_sets(self):
         """Test with full prediction sets (min efficiency)."""
