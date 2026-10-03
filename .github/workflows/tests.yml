@@ -25,7 +25,7 @@ jobs:
       - name: Install library and test dependencies
         run: |
           uv venv
-          uv pip install -e . '${{ matrix.sklearn }}' '${{ matrix.numpy }}' pytest pytest-cov ruff pandas
+          uv pip install -e . '${{ matrix.sklearn }}' '${{ matrix.numpy }}' pytest pytest-cov 'ruff==0.14.9' pandas
       - name: Lint
         run: uv run --no-sync ruff check src tests
       - name: Test

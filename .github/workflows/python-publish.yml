@@ -40,7 +40,7 @@ jobs:
       - name: Install library and release dependencies
         run: |
           uv venv
-          uv pip install -e . pytest pytest-cov ruff pandas twine
+          uv pip install -e . pytest pytest-cov 'ruff==0.14.9' pandas twine
       - name: Lint
         run: uv run --no-sync ruff check src tests
       - name: Test

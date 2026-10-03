@@ -165,7 +165,7 @@ These conventions follow the [split conformal regression literature](https://www
 ```bash
 uv sync --group dev
 uv run pytest
-uv run ruff check src tests/test_safety_and_api.py
+uv run ruff check src tests
 ```
 
 See [DOCUMENTATION.md](DOCUMENTATION.md) for the API and [THEORY.md](THEORY.md) for score definitions, the rank proof, assumptions, pipeline placement, and limitations.
