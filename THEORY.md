@@ -46,11 +46,11 @@ Classification additionally requires that `classes_` contains the entire possibl
 
 Let the fitted model be fixed and let `S(x, y)` be a nonconformity score, with larger values meaning worse agreement. The implemented scores are:
 
-| Method | Score | Returned region |
-| --- | --- | --- |
-| Absolute-residual regression | `abs(y - f(x))` | `[f(x) - q, f(x) + q]` |
-| LAC classification | `1 - p_y(x)` | Labels with `1 - p_y(x) <= q` |
-| Deterministic APS | Sum of probabilities through label `y` in descending order | Labels whose cumulative score is `<= q` |
+| Method                       | Score                                                      | Returned region                         |
+| ---------------------------- | ---------------------------------------------------------- | --------------------------------------- |
+| Absolute-residual regression | `abs(y - f(x))`                                            | `[f(x) - q, f(x) + q]`                  |
+| LAC classification           | `1 - p_y(x)`                                               | Labels with `1 - p_y(x) <= q`           |
+| Deterministic APS            | Sum of probabilities through label `y` in descending order | Labels whose cumulative score is `<= q` |
 
 APS uses stable `classes_` order to break equal-probability ties, identically at calibration and prediction. This is a deterministic cumulative-score variant; it does not implement the randomized boundary rule in Romano, Sesia and Candès. It can produce empty sets. It need not include the first label crossing `q`. Probabilities need not be statistically calibrated for the rank guarantee; model quality affects set efficiency. Regression intervals have constant width at a given alpha and do not adapt to heteroscedasticity.
 

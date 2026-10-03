@@ -1,17 +1,31 @@
 """Shared split-conformal estimator lifecycle and finite-sample calibration."""
 
+from __future__ import annotations
+
+import warnings
 from abc import ABC, abstractmethod
 from numbers import Real
-import warnings
+from typing import Any, Literal, Optional, Union
 
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 from sklearn.base import BaseEstimator, clone, is_regressor
 from sklearn.model_selection import train_test_split
+from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
+from typing_extensions import Self
+
+from ._typing import FeatureMatrix
 
 
-def validate_alpha(alpha):
-    """Validate a scalar miscoverage probability (never silently clip it)."""
+def validate_alpha(alpha: float) -> float:
+    """Validate a scalar miscoverage probability (never silently clip it).
+
+    Parameters
+    ----------
+    alpha
+        Miscoverage probability strictly between zero and one.
+    """
     if isinstance(alpha, (bool, np.bool_)) or not isinstance(alpha, Real):
         raise ValueError("alpha must be a finite scalar in (0, 1)")
     if not np.isfinite(alpha) or not 0 < alpha < 1:
@@ -27,18 +41,59 @@ class BaseConformalPredictor(BaseEstimator, ABC):
     ``calibration_size`` and ``random_state`` control automatic splitting.
     Put learned preprocessing inside the wrapped estimator's Pipeline so that
     calibration observations are excluded from all fitting steps.
+
+    Fitted attributes
+    -----------------
+    estimator_ is the fitted clone; n_features_in_ and optional feature_names_in_
+    describe its inputs. Classifiers additionally expose classes_. Calibration
+    creates immutable calibration_scores_ and sorted_calibration_scores_, with
+    n_calibration_ observations. calibration_non_conformity and n_calib retain
+    the legacy aliases. Threshold queries record alpha_used_, quantile_level_
+    (the finite-sample rank divided by sample count), and q_level_ (the threshold).
+    These attributes are removed when their fitted or calibrated state expires.
     """
+
+    # Attributes exist only after fitting, calibration, or a threshold query.
+    estimator_: BaseEstimator
+    classes_: NDArray[Any]
+    n_features_in_: int
+    feature_names_in_: NDArray[Any]
+    calibration_scores_: NDArray[np.float64]
+    sorted_calibration_scores_: NDArray[np.float64]
+    calibration_non_conformity: NDArray[np.float64]
+    n_calibration_: int
+    n_calib: int
+    alpha_used_: float
+    q_level_: float
+    quantile_level_: float
 
     def __init__(
         self,
-        estimator,
+        estimator: BaseEstimator,
         *,
-        auto_calibrate=False,
-        tts_kwargs=None,
-        calibration_size=0.2,
-        random_state=None,
-        prediction_mode="conformal",
-    ):
+        auto_calibrate: bool = False,
+        tts_kwargs: Optional[dict[str, Any]] = None,
+        calibration_size: Union[float, int] = 0.2,
+        random_state: Optional[Union[int, np.random.RandomState]] = None,
+        prediction_mode: Literal["conformal", "point"] = "conformal",
+    ) -> None:
+        """Configure the wrapped estimator and held-out calibration workflow.
+
+        Parameters
+        ----------
+        estimator
+            Cloneable sklearn estimator; classifiers also require predict_proba.
+        auto_calibrate
+            Reserve held-out calibration data during fit; defaults to False.
+        tts_kwargs
+            Optional train_test_split overrides, applied only with auto_calibrate.
+        calibration_size
+            Calibration fraction or sample count; defaults to 0.2.
+        random_state
+            Seed or RandomState for reproducible automatic splits.
+        prediction_mode
+            Return a conformal tuple by default, or point predictions in point mode.
+        """
         self.estimator = estimator
         self.auto_calibrate = auto_calibrate
         self.tts_kwargs = tts_kwargs
@@ -46,12 +101,20 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         self.random_state = random_state
         self.prediction_mode = prediction_mode
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
+        """Advertise sparse input support to sklearn validation and tooling."""
         tags = super().__sklearn_tags__()
         tags.input_tags.sparse = True
         return tags
 
-    def set_params(self, **params):
+    def set_params(self, **params: Any) -> Self:
+        """Set sklearn parameters and invalidate fitted and calibrated state.
+
+        Parameters
+        ----------
+        params
+            Sklearn parameters, including nested estimator parameters.
+        """
         result = super().set_params(**params)
         if params:
             self._clear_calibration()
@@ -66,18 +129,21 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         return result
 
     @property
-    def is_calibrated_(self):
+    def is_calibrated_(self) -> bool:
+        """Report whether calibration scores are available."""
         return hasattr(self, "calibration_scores_")
 
     @is_calibrated_.setter
-    def is_calibrated_(self, value):
+    def is_calibrated_(self, value: bool) -> None:
+        """Reset calibration or import scores from the legacy subclass protocol."""
         # Compatibility for subclasses using the original calibration protocol.
         if not value:
             self._clear_calibration()
         elif not hasattr(self, "calibration_scores_"):
             self.calibration_scores_ = np.asarray(self.calibration_non_conformity)
 
-    def _clear_calibration(self):
+    def _clear_calibration(self) -> None:
+        """Remove cached scores, sample counts, and threshold diagnostics."""
         for name in (
             "calibration_scores_",
             "sorted_calibration_scores_",
@@ -92,20 +158,35 @@ class BaseConformalPredictor(BaseEstimator, ABC):
 
     def fit(
         self,
-        X,
-        y,
-        auto_calibrate=None,
-        tts_kwargs=None,
+        X: FeatureMatrix,
+        y: ArrayLike,
+        auto_calibrate: Optional[bool] = None,
+        tts_kwargs: Optional[dict[str, Any]] = None,
         *,
-        sample_weight=None,
-        **fit_params,
-    ):
+        sample_weight: Optional[ArrayLike] = None,
+        **fit_params: Any,
+    ) -> Self:
         """Fit a fresh clone; optionally reserve an independent calibration split.
 
-        Extra fit parameters are forwarded unchanged to the underlying estimator.
-        ``sample_weight`` and step-qualified ``*__sample_weight`` vectors are
-        validated and sliced with an automatic split. Other metadata is passed
-        unchanged. Calibration remains unweighted.
+                Extra fit parameters are forwarded unchanged to the underlying estimator.
+                ``sample_weight`` and step-qualified ``*__sample_weight`` vectors are
+                validated and sliced with an automatic split. Other metadata is passed
+                unchanged. Calibration remains unweighted.
+
+        Parameters
+        ----------
+        X
+            Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
+        y
+            One target per sample; classification labels follow the fitted classes.
+        auto_calibrate
+            Reserve an independent calibration split when fitting.
+        tts_kwargs
+            Optional train_test_split overrides; requires automatic calibration.
+        sample_weight
+            Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+        fit_params
+            Estimator-specific fit metadata forwarded to the cloned estimator.
         """
         # Invalidate before attempting a refit, including when fitting fails.
         self._clear_calibration()
@@ -160,7 +241,8 @@ class BaseConformalPredictor(BaseEstimator, ABC):
             # Split indices to retain DataFrame column names and slice weights.
             train, calib = train_test_split(np.arange(len(y_checked)), **options)
 
-            def take(idx):
+            def take(idx: NDArray[np.integer[Any]]) -> FeatureMatrix:
+                """Select split rows while preserving DataFrame columns or sparse storage."""
                 return X_fit.iloc[idx] if hasattr(X_fit, "iloc") else X_fit[idx]
 
             X_train, X_calib = take(train), take(calib)
@@ -182,21 +264,26 @@ class BaseConformalPredictor(BaseEstimator, ABC):
             self.calibrate(X_calib, y_calib)
         return self
 
-    def _validate_estimator(self, estimator):
+    def _validate_estimator(self, estimator: BaseEstimator) -> None:
+        """Require the prediction methods needed by this wrapper."""
         for method in ("fit", "predict"):
             if not callable(getattr(estimator, method, None)):
                 raise TypeError(f"estimator must implement {method}")
 
-    def _validate_X(self, X):
+    def _validate_X(self, X: FeatureMatrix) -> FeatureMatrix:
+        """Check fitted state and feature layout, preserving DataFrame columns."""
         check_is_fitted(self, "estimator_")
         checked = validate_data(
             self, X, reset=False, accept_sparse=("csr", "csc"), dtype=None
         )
         return X if hasattr(X, "iloc") else checked
 
-    def _validate_calibration(self, X, y, *, numeric=False):
+    def _validate_calibration(
+        self, X: FeatureMatrix, y: ArrayLike, *, numeric: bool = False
+    ) -> tuple[FeatureMatrix, NDArray[Any]]:
+        """Validate aligned targets and features; optionally require finite numbers."""
         X = self._validate_X(X)
-        from sklearn.utils.validation import column_or_1d, check_consistent_length
+        from sklearn.utils.validation import check_consistent_length, column_or_1d
 
         y = column_or_1d(y)
         check_consistent_length(X, y)
@@ -206,7 +293,8 @@ class BaseConformalPredictor(BaseEstimator, ABC):
                 raise ValueError("calibration targets must be finite")
         return X, y
 
-    def _store_scores(self, scores):
+    def _store_scores(self, scores: ArrayLike) -> None:
+        """Store immutable finite scores and their sorted order for repeated queries."""
         scores = np.asarray(scores, dtype=float)
         if scores.ndim != 1 or not len(scores) or not np.isfinite(scores).all():
             raise ValueError("calibration scores must be a nonempty finite vector")
@@ -224,7 +312,8 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         self.calibration_non_conformity = self.calibration_scores_
         self.n_calibration_ = self.n_calib = len(scores)
 
-    def _threshold(self, alpha):
+    def _threshold(self, alpha: float) -> float:
+        """Select the finite-sample order statistic, allowing an infinite threshold."""
         alpha = validate_alpha(alpha)
         if not self.is_calibrated_:
             raise RuntimeError(
@@ -245,5 +334,13 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         return self.q_level_
 
     @abstractmethod
-    def calibrate(self, X, y):
-        """Replace calibration scores using data independent of model fitting."""
+    def calibrate(self, X: FeatureMatrix, y: ArrayLike) -> Self:
+        """Replace calibration scores using data independent of model fitting.
+
+        Parameters
+        ----------
+        X
+            Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
+        y
+            One target per sample; classification labels follow the fitted classes.
+        """

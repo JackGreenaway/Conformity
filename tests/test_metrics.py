@@ -1,51 +1,56 @@
 """Comprehensive tests for the metrics module."""
 
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 import pytest
-from sklearn.datasets import make_regression, make_classification
+from numpy.typing import NDArray
+from sklearn.datasets import make_classification, make_regression
 
 from conformity.metrics import (
-    prediction_set_coverage,
-    prediction_set_efficiency,
     prediction_interval_coverage,
     prediction_interval_efficiency,
-    prediction_interval_ratio,
     prediction_interval_mse,
+    prediction_interval_ratio,
+    prediction_set_coverage,
+    prediction_set_efficiency,
 )
 
 
 class TestPredictionSetCoverage:
     """Tests for prediction_set_coverage metric."""
 
-    def test_perfect_coverage(self):
+    def test_perfect_coverage(self) -> None:
         """Test when all samples are covered."""
         y_true = np.array([0, 1, 2])
         prediction_set = np.array([[0, 1], [1, 2], [2, 3]])
         coverage = prediction_set_coverage(y_true, prediction_set)
         assert coverage == 1.0
 
-    def test_no_coverage(self):
+    def test_no_coverage(self) -> None:
         """Test when no samples are covered."""
         y_true = np.array([0, 1, 2])
         prediction_set = np.array([[3, 4], [5, 6], [7, 8]])
         coverage = prediction_set_coverage(y_true, prediction_set)
         assert coverage == 0.0
 
-    def test_partial_coverage(self):
+    def test_partial_coverage(self) -> None:
         """Test with partial coverage."""
         y_true = np.array([0, 1, 2, 3])
         prediction_set = np.array([[0, 1], [5, 6], [2, 3], [7, 8]])
         coverage = prediction_set_coverage(y_true, prediction_set)
         assert coverage == 0.5
 
-    def test_with_nan_values(self):
+    def test_with_nan_values(self) -> None:
         """Test handling of NaN values in prediction sets."""
         y_true = np.array([0, 1, 2])
         prediction_set = np.array([[0, 1], [np.nan, np.nan], [2, 3]])
         coverage = prediction_set_coverage(y_true, prediction_set)
         assert coverage == pytest.approx(2.0 / 3.0)
 
-    def test_multiclass_predictions(self):
+    def test_multiclass_predictions(self) -> None:
         """Test with multiclass predictions."""
         y_true = np.array([0, 1, 2, 1, 0])
         # Create properly structured array
@@ -62,20 +67,20 @@ class TestPredictionSetCoverage:
 class TestPredictionSetEfficiency:
     """Tests for prediction_set_efficiency metric."""
 
-    def test_all_singletons(self):
+    def test_all_singletons(self) -> None:
         """Test with single-element prediction sets (max efficiency)."""
         prediction_set = np.array([[0.0], [1.0], [2.0], [1.0]])
         # Single-column sets use their mean size rather than dividing by zero.
         efficiency = prediction_set_efficiency(prediction_set)
         assert efficiency == 1.0
 
-    def test_all_full_sets(self):
+    def test_all_full_sets(self) -> None:
         """Test with full prediction sets (min efficiency)."""
         prediction_set = np.array([[0, 1, 2], [0, 1, 2], [0, 1, 2]])
         efficiency = prediction_set_efficiency(prediction_set)
         assert efficiency == 1.0
 
-    def test_mixed_set_sizes(self):
+    def test_mixed_set_sizes(self) -> None:
         """Test with mixed set sizes."""
         # Create properly structured array with consistent shape
         prediction_set = np.full((3, 3), np.nan)
@@ -88,7 +93,7 @@ class TestPredictionSetEfficiency:
         expected = (0 + 0.5 + 1.0) / 3
         assert efficiency == pytest.approx(expected)
 
-    def test_with_nan_values(self):
+    def test_with_nan_values(self) -> None:
         """Test efficiency with NaN values representing empty sets."""
         prediction_set = np.array(
             [[np.nan, np.nan, np.nan], [0.0, np.nan, np.nan], [0.0, 1.0, 2.0]]
@@ -103,28 +108,28 @@ class TestPredictionSetEfficiency:
 class TestPredictionIntervalCoverage:
     """Tests for prediction_interval_coverage metric."""
 
-    def test_perfect_coverage(self):
+    def test_perfect_coverage(self) -> None:
         """Test when all true values are within intervals."""
         y_true = np.array([1.0, 2.0, 3.0, 4.0])
         intervals = np.array([[0.5, 1.5], [1.5, 2.5], [2.5, 3.5], [3.5, 4.5]])
         coverage = prediction_interval_coverage(y_true, intervals)
         assert coverage == 1.0
 
-    def test_no_coverage(self):
+    def test_no_coverage(self) -> None:
         """Test when no true values are within intervals."""
         y_true = np.array([1.0, 2.0, 3.0, 4.0])
         intervals = np.array([[10.0, 11.0], [11.0, 12.0], [12.0, 13.0], [13.0, 14.0]])
         coverage = prediction_interval_coverage(y_true, intervals)
         assert coverage == 0.0
 
-    def test_partial_coverage(self):
+    def test_partial_coverage(self) -> None:
         """Test with partial coverage."""
         y_true = np.array([1.0, 2.0, 3.0, 4.0])
         intervals = np.array([[0.5, 1.5], [5.0, 6.0], [2.5, 3.5], [3.5, 4.5]])
         coverage = prediction_interval_coverage(y_true, intervals)
         assert coverage == 0.75
 
-    def test_boundary_conditions(self):
+    def test_boundary_conditions(self) -> None:
         """Test with values on interval boundaries."""
         y_true = np.array([1.0, 2.0, 3.0])
         intervals = np.array([[1.0, 2.0], [2.0, 3.0], [3.0, 4.0]])
@@ -135,14 +140,14 @@ class TestPredictionIntervalCoverage:
 class TestPredictionIntervalEfficiency:
     """Tests for prediction_interval_efficiency metric."""
 
-    def test_equal_width_intervals(self):
+    def test_equal_width_intervals(self) -> None:
         """Test with equal width intervals."""
         point_pred = np.array([1.0, 2.0, 3.0])
         intervals = np.array([[0.0, 2.0], [1.0, 3.0], [2.0, 4.0]])
         efficiency = prediction_interval_efficiency(point_pred, intervals)
         assert efficiency == 2.0
 
-    def test_relative_efficiency(self):
+    def test_relative_efficiency(self) -> None:
         """Test relative efficiency normalization."""
         point_pred = np.array([1.0, 2.0, 10.0])
         intervals = np.array([[0.0, 2.0], [1.0, 3.0], [9.0, 11.0]])
@@ -152,7 +157,7 @@ class TestPredictionIntervalEfficiency:
         expected = (2.0 / 1.0 + 2.0 / 2.0 + 2.0 / 10.0) / 3
         assert efficiency == pytest.approx(expected)
 
-    def test_different_widths(self):
+    def test_different_widths(self) -> None:
         """Test with varying interval widths."""
         point_pred = np.array([1.0, 2.0, 3.0])
         intervals = np.array([[0.5, 1.5], [1.0, 3.0], [2.9, 3.1]])
@@ -164,7 +169,7 @@ class TestPredictionIntervalEfficiency:
 class TestPredictionIntervalRatio:
     """Tests for prediction_interval_ratio metric."""
 
-    def test_symmetric_intervals(self):
+    def test_symmetric_intervals(self) -> None:
         """Test with symmetric intervals around predictions."""
         point_pred = np.array([1.0, 2.0, 3.0])
         intervals = np.array([[0.0, 2.0], [1.0, 3.0], [2.0, 4.0]])
@@ -173,14 +178,14 @@ class TestPredictionIntervalRatio:
         expected = (2.0 + 1.5 + 4.0 / 3.0) / 3
         assert ratio == pytest.approx(expected)
 
-    def test_single_sample(self):
+    def test_single_sample(self) -> None:
         """Test with single sample."""
         point_pred = np.array([5.0])
         intervals = np.array([[3.0, 7.0]])
         ratio = prediction_interval_ratio(point_pred, intervals)
         assert ratio == 1.4
 
-    def test_varying_ratios(self):
+    def test_varying_ratios(self) -> None:
         """Test with varying upper bound to prediction ratios."""
         point_pred = np.array([1.0, 2.0, 4.0])
         intervals = np.array([[0.0, 2.0], [0.0, 4.0], [0.0, 8.0]])
@@ -192,7 +197,7 @@ class TestPredictionIntervalRatio:
 class TestPredictionIntervalMSE:
     """Tests for prediction_interval_mse metric."""
 
-    def test_perfect_predictions(self):
+    def test_perfect_predictions(self) -> None:
         """Test with perfect interval predictions."""
         y_true = np.array([1.0, 2.0, 3.0])
         intervals = np.array([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]])
@@ -200,7 +205,7 @@ class TestPredictionIntervalMSE:
         assert mse_lower == 0.0
         assert mse_upper == 0.0
 
-    def test_consistent_error(self):
+    def test_consistent_error(self) -> None:
         """Test with consistent prediction error."""
         y_true = np.array([1.0, 2.0, 3.0])
         intervals = np.array([[0.0, 2.0], [1.0, 3.0], [2.0, 4.0]])
@@ -209,7 +214,7 @@ class TestPredictionIntervalMSE:
         assert mse_lower == expected
         assert mse_upper == expected
 
-    def test_asymmetric_error(self):
+    def test_asymmetric_error(self) -> None:
         """Test with asymmetric lower and upper bound errors."""
         y_true = np.array([2.0, 3.0, 4.0])
         intervals = np.array([[0.0, 3.0], [1.0, 4.0], [2.0, 5.0]])
@@ -223,9 +228,12 @@ class TestPredictionIntervalMSE:
 class TestMetricsWithRealData:
     """Integration tests for metrics with realistic data."""
 
-    def test_metrics_with_regression_data(self):
+    def test_metrics_with_regression_data(
+        self,
+    ) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]]:
         """Test metrics with actual regression data."""
         from sklearn.linear_model import LinearRegression
+
         from conformity.regressor import ConformalRegressor
 
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
@@ -252,9 +260,12 @@ class TestMetricsWithRealData:
         assert 0.80 <= coverage <= 1.0  # Coverage should be close to 90%
         assert efficiency > 0  # Should have non-zero width intervals
 
-    def test_metrics_with_classification_data(self):
+    def test_metrics_with_classification_data(
+        self,
+    ) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]]:
         """Test metrics with actual classification data."""
         from sklearn.linear_model import LogisticRegression
+
         from conformity.classifier import ConformalClassifier
 
         X, y = make_classification(
@@ -287,14 +298,16 @@ class TestMetricsWithRealData:
 class TestMetricsEdgeCases:
     """Tests for edge cases in metrics."""
 
-    def test_single_sample(self):
+    def test_single_sample(self) -> None:
         """Test metrics with single sample."""
         y_true = np.array([1.0])
         intervals = np.array([[0.0, 2.0]])
         coverage = prediction_interval_coverage(y_true, intervals)
         assert coverage == 1.0
 
-    def test_large_dataset(self):
+    def test_large_dataset(
+        self,
+    ) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]]:
         """Test metrics with large dataset."""
         n_samples = 10000
         y_true = np.random.randn(n_samples)
@@ -302,7 +315,7 @@ class TestMetricsEdgeCases:
         coverage = prediction_interval_coverage(y_true, intervals)
         assert coverage == 1.0
 
-    def test_negative_values(self):
+    def test_negative_values(self) -> None:
         """Test with negative values."""
         y_true = np.array([-3.0, -2.0, -1.0])
         intervals = np.array([[-4.0, -2.0], [-3.0, -1.0], [-2.0, 0.0]])
@@ -310,7 +323,7 @@ class TestMetricsEdgeCases:
         # Check which are contained: -3 in [-4,-2]? Yes. -2 in [-3,-1]? Yes. -1 in [-2,0]? Yes.
         assert coverage == 1.0
 
-    def test_zero_width_intervals(self):
+    def test_zero_width_intervals(self) -> None:
         """Test with zero-width intervals."""
         point_pred = np.array([1.0, 2.0, 3.0])
         intervals = np.array([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]])

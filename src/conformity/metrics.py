@@ -5,11 +5,19 @@ Boolean sets use columns in an explicitly supplied ``classes`` order for coverag
 Legacy label arrays use NaN (or None for object arrays) for exclusions.
 """
 
+from __future__ import annotations
+
+from typing import Any, Optional
+
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
+
+from ._typing import FloatArray
 from .base import validate_alpha
 
 
-def _average(values, sample_weight=None):
+def _average(values: ArrayLike, sample_weight: Optional[ArrayLike] = None) -> float:
+    """Compute a validated weighted mean, ignoring zero-weight infinite values."""
     values = np.asarray(values, dtype=float)
     if sample_weight is None:
         return float(np.mean(values))
@@ -26,14 +34,16 @@ def _average(values, sample_weight=None):
     return float(np.average(values[positive], weights=weight[positive]))
 
 
-def _vector(values, n, name):
+def _vector(values: ArrayLike, n: int, name: str) -> NDArray[Any]:
+    """Require a one-dimensional vector of the specified sample count."""
     values = np.asarray(values)
     if values.ndim != 1 or len(values) != n:
         raise ValueError(f"{name} must be a vector matching the number of samples")
     return values
 
 
-def _intervals(intervals):
+def _intervals(intervals: ArrayLike) -> FloatArray:
+    """Require nonempty ordered bounds, permitting outward infinities."""
     intervals = np.asarray(intervals, dtype=float)
     if intervals.ndim != 2 or intervals.shape[1] != 2 or not len(intervals):
         raise ValueError("prediction_intervals must have nonempty shape (n_samples, 2)")
@@ -44,14 +54,16 @@ def _intervals(intervals):
     return intervals
 
 
-def _targets(y, n):
+def _targets(y: ArrayLike, n: int) -> FloatArray:
+    """Require finite numeric targets matching the interval sample count."""
     y = np.asarray(_vector(y, n, "y_true"), dtype=float)
     if not np.isfinite(y).all():
         raise ValueError("y_true must be finite")
     return y
 
 
-def _sets(prediction_set):
+def _sets(prediction_set: ArrayLike) -> tuple[NDArray[Any], NDArray[np.bool_]]:
+    """Return label values and membership, recognizing NaN and None exclusions."""
     values = np.asarray(prediction_set)
     if values.ndim != 2 or 0 in values.shape:
         raise ValueError("prediction_set must be a nonempty 2D array")
@@ -73,9 +85,25 @@ def _sets(prediction_set):
 
 
 def prediction_set_coverage(
-    y_true, prediction_set, *, classes=None, sample_weight=None
-):
-    """Fraction of sets containing the true class; supports arbitrary labels."""
+    y_true: ArrayLike,
+    prediction_set: ArrayLike,
+    *,
+    classes: Optional[ArrayLike] = None,
+    sample_weight: Optional[ArrayLike] = None,
+) -> float:
+    """Fraction of sets containing the true class; supports arbitrary labels.
+
+    Parameters
+    ----------
+    y_true
+        One observed target or class label per sample.
+    prediction_set
+        Boolean membership matrix or legacy labels with NaN/None exclusions.
+    classes
+        Unique class labels in boolean membership-column order.
+    sample_weight
+        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    """
     values, mask = _sets(prediction_set)
     y = _vector(y_true, len(values), "y_true")
     if values.dtype == bool:
@@ -90,26 +118,65 @@ def prediction_set_coverage(
     return _average(hits.any(axis=1), sample_weight)
 
 
-def prediction_set_size(prediction_set, *, sample_weight=None):
-    """Mean cardinality (smaller is more efficient at comparable coverage)."""
+def prediction_set_size(
+    prediction_set: ArrayLike, *, sample_weight: Optional[ArrayLike] = None
+) -> float:
+    """Mean cardinality (smaller is more efficient at comparable coverage).
+
+    Parameters
+    ----------
+    prediction_set
+        Boolean membership matrix or legacy labels with NaN/None exclusions.
+    sample_weight
+        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    """
     return _average(_sets(prediction_set)[1].sum(axis=1), sample_weight)
 
 
-def prediction_set_empty_rate(prediction_set, *, sample_weight=None):
-    """Fraction of empty sets."""
+def prediction_set_empty_rate(
+    prediction_set: ArrayLike, *, sample_weight: Optional[ArrayLike] = None
+) -> float:
+    """Fraction of empty sets.
+
+    Parameters
+    ----------
+    prediction_set
+        Boolean membership matrix or legacy labels with NaN/None exclusions.
+    sample_weight
+        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    """
     return _average(_sets(prediction_set)[1].sum(axis=1) == 0, sample_weight)
 
 
-def prediction_set_singleton_rate(prediction_set, *, sample_weight=None):
-    """Fraction of sets containing exactly one label."""
+def prediction_set_singleton_rate(
+    prediction_set: ArrayLike, *, sample_weight: Optional[ArrayLike] = None
+) -> float:
+    """Fraction of sets containing exactly one label.
+
+    Parameters
+    ----------
+    prediction_set
+        Boolean membership matrix or legacy labels with NaN/None exclusions.
+    sample_weight
+        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    """
     return _average(_sets(prediction_set)[1].sum(axis=1) == 1, sample_weight)
 
 
-def prediction_set_efficiency(prediction_set, *, sample_weight=None):
+def prediction_set_efficiency(
+    prediction_set: ArrayLike, *, sample_weight: Optional[ArrayLike] = None
+) -> float:
     """Legacy (size - 1) / (number of classes - 1) diagnostic.
 
-    Empty sets can yield negative values. For a single class, return mean size
-    rather than divide by zero. Prefer prediction_set_size for interpretation.
+        Empty sets can yield negative values. For a single class, return mean size
+        rather than divide by zero. Prefer prediction_set_size for interpretation.
+
+    Parameters
+    ----------
+    prediction_set
+        Boolean membership matrix or legacy labels with NaN/None exclusions.
+    sample_weight
+        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
     """
     values, mask = _sets(prediction_set)
     size = mask.sum(axis=1)
@@ -119,23 +186,64 @@ def prediction_set_efficiency(prediction_set, *, sample_weight=None):
     )
 
 
-def prediction_interval_coverage(y_true, prediction_intervals, *, sample_weight=None):
-    """Fraction of targets contained in closed prediction intervals."""
+def prediction_interval_coverage(
+    y_true: ArrayLike,
+    prediction_intervals: ArrayLike,
+    *,
+    sample_weight: Optional[ArrayLike] = None,
+) -> float:
+    """Fraction of targets contained in closed prediction intervals.
+
+    Parameters
+    ----------
+    y_true
+        One observed target or class label per sample.
+    prediction_intervals
+        Ordered lower/upper bounds of shape (n_samples, 2).
+    sample_weight
+        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    """
     intervals = _intervals(prediction_intervals)
     y = _targets(y_true, len(intervals))
     return _average((intervals[:, 0] <= y) & (y <= intervals[:, 1]), sample_weight)
 
 
-def prediction_interval_width(prediction_intervals, *, sample_weight=None):
-    """Mean interval width; unbounded intervals have infinite width."""
+def prediction_interval_width(
+    prediction_intervals: ArrayLike, *, sample_weight: Optional[ArrayLike] = None
+) -> float:
+    """Mean interval width; unbounded intervals have infinite width.
+
+    Parameters
+    ----------
+    prediction_intervals
+        Ordered lower/upper bounds of shape (n_samples, 2).
+    sample_weight
+        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    """
     intervals = _intervals(prediction_intervals)
     return _average(intervals[:, 1] - intervals[:, 0], sample_weight)
 
 
 def prediction_interval_efficiency(
-    point_prediction, prediction_intervals, relative=False, *, sample_weight=None
-):
-    """Mean width, optionally divided by abs(point_prediction) + 1e-10."""
+    point_prediction: ArrayLike,
+    prediction_intervals: ArrayLike,
+    relative: bool = False,
+    *,
+    sample_weight: Optional[ArrayLike] = None,
+) -> float:
+    """Mean width, optionally divided by abs(point_prediction) + 1e-10.
+
+    Parameters
+    ----------
+    point_prediction
+        One finite point prediction per sample.
+    prediction_intervals
+        Ordered lower/upper bounds of shape (n_samples, 2).
+    relative
+        Divide widths by the absolute point prediction plus 1e-10.
+    sample_weight
+        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    """
     intervals = _intervals(prediction_intervals)
     point = _targets(point_prediction, len(intervals))
     width = intervals[:, 1] - intervals[:, 0]
@@ -145,9 +253,22 @@ def prediction_interval_efficiency(
 
 
 def prediction_interval_ratio(
-    point_predictions, prediction_intervals, *, sample_weight=None
-):
-    """Mean upper bound / point prediction; undefined for zero predictions."""
+    point_predictions: ArrayLike,
+    prediction_intervals: ArrayLike,
+    *,
+    sample_weight: Optional[ArrayLike] = None,
+) -> float:
+    """Mean upper bound / point prediction; undefined for zero predictions.
+
+    Parameters
+    ----------
+    point_predictions
+        One finite, nonzero point prediction per sample.
+    prediction_intervals
+        Ordered lower/upper bounds of shape (n_samples, 2).
+    sample_weight
+        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    """
     intervals = _intervals(prediction_intervals)
     point = _targets(point_predictions, len(intervals))
     if (point == 0).any():
@@ -155,18 +276,50 @@ def prediction_interval_ratio(
     return _average(intervals[:, 1] / point, sample_weight)
 
 
-def prediction_interval_mse(y_true, prediction_intervals, *, sample_weight=None):
-    """MSE of each bound; infinite bounds give infinite MSE."""
+def prediction_interval_mse(
+    y_true: ArrayLike,
+    prediction_intervals: ArrayLike,
+    *,
+    sample_weight: Optional[ArrayLike] = None,
+) -> tuple[float, float]:
+    """MSE of each bound; infinite bounds give infinite MSE.
+
+    Parameters
+    ----------
+    y_true
+        One observed target or class label per sample.
+    prediction_intervals
+        Ordered lower/upper bounds of shape (n_samples, 2).
+    sample_weight
+        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    """
     intervals = _intervals(prediction_intervals)
     y = _targets(y_true, len(intervals))
     return tuple(_average((intervals[:, i] - y) ** 2, sample_weight) for i in range(2))
 
 
-def interval_score(y_true, prediction_intervals, alpha=0.05, *, sample_weight=None):
+def interval_score(
+    y_true: ArrayLike,
+    prediction_intervals: ArrayLike,
+    alpha: float = 0.05,
+    *,
+    sample_weight: Optional[ArrayLike] = None,
+) -> float:
     """Mean Winkler score: width plus 2/alpha times each missed-bound distance.
 
-    Lower is better; combines sharpness and miscoverage. Infinite intervals
-    have infinite score. Alpha must match that used to construct intervals.
+        Lower is better; combines sharpness and miscoverage. Infinite intervals
+        have infinite score. Alpha must match that used to construct intervals.
+
+    Parameters
+    ----------
+    y_true
+        One observed target or class label per sample.
+    prediction_intervals
+        Ordered lower/upper bounds of shape (n_samples, 2).
+    alpha
+        Miscoverage probability strictly between zero and one.
+    sample_weight
+        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
     """
     alpha = validate_alpha(alpha)
     intervals = _intervals(prediction_intervals)

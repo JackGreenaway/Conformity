@@ -1,14 +1,15 @@
 """Integration tests for conformal predictors."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
-from sklearn.datasets import make_regression, make_classification
-from sklearn.linear_model import LinearRegression, LogisticRegression, Ridge, Lasso
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.datasets import make_classification, make_regression
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.linear_model import Lasso, LinearRegression, LogisticRegression, Ridge
 from sklearn.model_selection import train_test_split
 
-from conformity.classifier import ConformalClassifier
-from conformity.regressor import ConformalRegressor
+from conformity import ConformalClassifier, ConformalRegressor
 from conformity.metrics import (
     prediction_interval_coverage,
     prediction_set_coverage,
@@ -18,7 +19,7 @@ from conformity.metrics import (
 class TestMultipleEstimators:
     """Tests with multiple different estimators."""
 
-    def test_regressor_with_different_models(self):
+    def test_regressor_with_different_models(self) -> None:
         """Test ConformalRegressor with different regression models."""
         X, y = make_regression(n_samples=300, n_features=10, random_state=42)
         X_train, X_rest, y_train, y_rest = train_test_split(
@@ -44,7 +45,7 @@ class TestMultipleEstimators:
             assert intervals.shape == (X_test.shape[0], 2)
             assert np.all(intervals[:, 0] <= intervals[:, 1])
 
-    def test_classifier_with_different_models(self):
+    def test_classifier_with_different_models(self) -> None:
         """Test ConformalClassifier with different classification models."""
         X, y = make_classification(n_samples=300, n_features=10, random_state=42)
         X_train, X_rest, y_train, y_rest = train_test_split(
@@ -70,7 +71,7 @@ class TestMultipleEstimators:
 class TestCoverageLevels:
     """Tests for different coverage levels."""
 
-    def test_regressor_coverage_at_different_alphas(self):
+    def test_regressor_coverage_at_different_alphas(self) -> None:
         """Test that higher alphas give higher empirical coverage."""
         X, y = make_regression(n_samples=500, n_features=10, random_state=42)
         X_train, X_rest, y_train, y_rest = train_test_split(
@@ -98,7 +99,7 @@ class TestCoverageLevels:
         assert all(c >= 0 for c in coverages)
         assert all(c <= 1 for c in coverages)
 
-    def test_classifier_coverage_at_different_alphas(self):
+    def test_classifier_coverage_at_different_alphas(self) -> None:
         """Test classifier coverage at different alpha levels."""
         X, y = make_classification(n_samples=500, n_features=10, random_state=42)
         X_train, X_rest, y_train, y_rest = train_test_split(
@@ -127,7 +128,7 @@ class TestCoverageLevels:
 class TestBoundaryConditions:
     """Tests for boundary and edge conditions."""
 
-    def test_small_calibration_set(self):
+    def test_small_calibration_set(self) -> None:
         """Test with very small calibration set."""
         X, y = make_regression(n_samples=100, n_features=5, random_state=42)
         X_train, X_rest, y_train, y_rest = train_test_split(
@@ -144,7 +145,7 @@ class TestBoundaryConditions:
         y_pred, intervals = reg.predict(X_test)
         assert intervals.shape[0] == X_test.shape[0]
 
-    def test_large_alpha(self):
+    def test_large_alpha(self) -> None:
         """Test with alpha close to 1 that triggers warning."""
         X, y = make_regression(n_samples=50, n_features=5, random_state=42)
         X_train, X_rest, y_train, y_rest = train_test_split(
@@ -168,7 +169,7 @@ class TestBoundaryConditions:
             assert intervals.shape[0] == X_test.shape[0]
             assert np.all(intervals[:, 0] <= intervals[:, 1])
 
-    def test_very_small_alpha(self):
+    def test_very_small_alpha(self) -> None:
         """Test with very small alpha."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
         X_train, X_rest, y_train, y_rest = train_test_split(
@@ -187,7 +188,7 @@ class TestBoundaryConditions:
         # Should still return valid intervals
         assert intervals.shape[0] == X_test.shape[0]
 
-    def test_invalid_alpha(self):
+    def test_invalid_alpha(self) -> None:
         """Test that invalid alpha values raise errors."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
         X_train, X_rest, y_train, y_rest = train_test_split(
@@ -217,7 +218,7 @@ class TestBoundaryConditions:
 class TestDataTypeHandling:
     """Tests for different data types."""
 
-    def test_different_dtypes_float(self):
+    def test_different_dtypes_float(self) -> None:
         """Test with different float dtypes."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
         X_train, X_rest, y_train, y_rest = train_test_split(
@@ -239,7 +240,7 @@ class TestDataTypeHandling:
             y_pred, intervals = reg.predict(X_test_typed)
             assert y_pred.shape[0] == X_test.shape[0]
 
-    def test_1d_target_conversion(self):
+    def test_1d_target_conversion(self) -> None:
         """Test that 1D targets are handled correctly."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
         X_train, X_rest, y_train, y_rest = train_test_split(
@@ -264,7 +265,7 @@ class TestDataTypeHandling:
 class TestConsistency:
     """Tests for consistency across multiple calls."""
 
-    def test_deterministic_predictions_with_seed(self):
+    def test_deterministic_predictions_with_seed(self) -> None:
         """Test that predictions are deterministic with set random seed."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
         X_train, X_rest, y_train, y_rest = train_test_split(
@@ -287,7 +288,7 @@ class TestConsistency:
         np.testing.assert_array_almost_equal(pred1, pred2)
         np.testing.assert_array_almost_equal(int1, int2)
 
-    def test_multiple_calls_give_same_intervals(self):
+    def test_multiple_calls_give_same_intervals(self) -> None:
         """Test that calling predict multiple times gives same results."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
         X_train, X_rest, y_train, y_rest = train_test_split(
@@ -314,7 +315,7 @@ class TestConsistency:
 class TestWarnings:
     """Tests for appropriate warning generation."""
 
-    def test_multiple_calibrations_warning(self):
+    def test_multiple_calibrations_warning(self) -> None:
         """Test that multiple calibrations generate warning."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
         X_train, X_rest, y_train, y_rest = train_test_split(

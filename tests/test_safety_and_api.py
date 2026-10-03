@@ -1,9 +1,13 @@
 """Regression tests for finite-sample validity and sklearn integration."""
 
+from __future__ import annotations
+
 import pickle
+from typing import Any, Literal, Union
 
 import numpy as np
 import pytest
+from numpy.typing import ArrayLike, NDArray
 from scipy import sparse
 from sklearn.base import (
     BaseEstimator,
@@ -19,45 +23,59 @@ from sklearn.model_selection import GridSearchCV, cross_val_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.estimator_checks import check_estimator
+from typing_extensions import Self
 
 from conformity import (
+    BaseConformalPredictor,
     ConformalClassifier,
     ConformalRegressor,
     interval_score,
     prediction_interval_coverage,
     prediction_interval_width,
     prediction_set_coverage,
-    prediction_set_size,
     prediction_set_empty_rate,
     prediction_set_singleton_rate,
+    prediction_set_size,
 )
+from conformity._typing import FeatureMatrix, FloatArray
 
 
-def regressor():
+def regressor() -> ConformalRegressor:
+    """Build a fitted constant regressor for calibration contract tests."""
     reg = ConformalRegressor(DummyRegressor(strategy="constant", constant=0))
     reg.fit(np.zeros((10, 1)), np.zeros(10))
     return reg
 
 
 class FixedClassifier(ClassifierMixin, BaseEstimator):
-    def fit(self, X, y):
+    """Treat input rows as fixed probabilities for deterministic class tests."""
+
+    def fit(self, X: FeatureMatrix, y: ArrayLike) -> Self:
+        """Record the sorted target labels without learning input probabilities."""
         self.classes_ = np.unique(y)
         return self
 
-    def predict_proba(self, X):
+    def predict_proba(self, X: FeatureMatrix) -> FloatArray:
+        """Return input rows as the class probability matrix."""
         return np.asarray(X, dtype=float)
 
-    def predict(self, X):
+    def predict(self, X: FeatureMatrix) -> NDArray[Any]:
+        """Select the label with maximum probability in each input row."""
         return self.classes_[np.argmax(X, axis=1)]
 
 
-def classifier(method="lac", labels=("cat", "dog")):
+def classifier(
+    method: Literal["lac", "aps"] = "lac",
+    labels: tuple[Union[str, int], ...] = ("cat", "dog"),
+) -> ConformalClassifier:
+    """Build a fitted classifier with deterministic input probabilities."""
     clf = ConformalClassifier(FixedClassifier(), method=method)
     clf.fit([[0.8, 0.2], [0.2, 0.8]], labels)
     return clf
 
 
-def test_exact_order_statistic_and_cached_scores():
+def test_exact_order_statistic_and_cached_scores() -> None:
+    """Verify exact order statistic and cached scores."""
     reg = regressor().calibrate(np.zeros((9, 1)), np.arange(1, 10))
     intervals = reg.predict_interval([[0]], alpha=0.2)
     np.testing.assert_array_equal(intervals, [[-8, 8]])
@@ -67,7 +85,8 @@ def test_exact_order_statistic_and_cached_scores():
     assert reg.n_calibration_ == 9
 
 
-def test_small_calibration_returns_unbounded_interval():
+def test_small_calibration_returns_unbounded_interval() -> None:
+    """Verify small calibration returns unbounded interval."""
     reg = regressor().calibrate([[0]], [1])
     with pytest.warns(UserWarning, match="infinite"):
         bounds = reg.predict_interval([[0]], alpha=0.1)
@@ -79,7 +98,8 @@ def test_small_calibration_returns_unbounded_interval():
 
 @pytest.mark.parametrize("alpha", [0, 1, -0.1, 1.1, np.nan, np.inf, True, "0.1", [0.1]])
 @pytest.mark.parametrize("kind", ["regression", "classification"])
-def test_invalid_alpha_rejected(alpha, kind):
+def test_invalid_alpha_rejected(alpha: object, kind: str) -> None:
+    """Verify invalid alpha rejected."""
     if kind == "regression":
         obj = regressor().calibrate(np.zeros((10, 1)), np.arange(10))
         X = [[0]]
@@ -92,7 +112,10 @@ def test_invalid_alpha_rejected(alpha, kind):
         call(X, alpha)
 
 
-def test_refitting_invalidates_calibration_and_parameter_changes_invalidate_fit():
+def test_refitting_invalidates_calibration_and_parameter_changes_invalidate_fit() -> (
+    None
+):
+    """Verify refitting invalidates calibration and parameter changes invalidate fit."""
     reg = regressor().calibrate(np.zeros((10, 1)), np.arange(10))
     reg.fit([[0], [1]], [0, 1])
     assert not reg.is_calibrated_
@@ -104,7 +127,8 @@ def test_refitting_invalidates_calibration_and_parameter_changes_invalidate_fit(
         reg.predict_point([[0]])
 
 
-def test_failed_refit_cannot_reuse_old_calibration():
+def test_failed_refit_cannot_reuse_old_calibration() -> None:
+    """Verify failed refit cannot reuse old calibration."""
     reg = regressor().calibrate(np.zeros((10, 1)), np.arange(10))
     with pytest.raises(ValueError):
         reg.fit([[0]], [1, 2])
@@ -114,7 +138,10 @@ def test_failed_refit_cannot_reuse_old_calibration():
 
 
 @pytest.mark.parametrize("labels", [("cat", "dog"), (-10, 20)])
-def test_arbitrary_labels_ties_and_p_values(labels):
+def test_arbitrary_labels_ties_and_p_values(
+    labels: tuple[Union[str, int], ...],
+) -> None:
+    """Verify arbitrary labels ties and p values."""
     clf = classifier(labels=labels)
     clf.calibrate([[0.8, 0.2]] * 9, [labels[0]] * 9)
     X = [[0.8, 0.2], [0.2, 0.8]]
@@ -130,7 +157,8 @@ def test_arbitrary_labels_ties_and_p_values(labels):
     assert proba.shape == (2, 2)
 
 
-def test_unknown_calibration_label_rejected_without_losing_valid_scores():
+def test_unknown_calibration_label_rejected_without_losing_valid_scores() -> None:
+    """Verify unknown calibration label rejected without losing valid scores."""
     clf = classifier().calibrate([[0.8, 0.2]] * 9, ["cat"] * 9)
     before = clf.calibration_scores_.copy()
     with pytest.raises(ValueError, match="absent"):
@@ -138,7 +166,8 @@ def test_unknown_calibration_label_rejected_without_losing_valid_scores():
     np.testing.assert_array_equal(before, clf.calibration_scores_)
 
 
-def test_aps_scores_are_cumulative_and_method_change_rejected():
+def test_aps_scores_are_cumulative_and_method_change_rejected() -> None:
+    """Verify aps scores are cumulative and method change rejected."""
     clf = classifier(method="aps").calibrate([[0.8, 0.2]] * 9, ["dog"] * 9)
     np.testing.assert_allclose(clf.calibration_scores_, 1)
     assert clf.predict_set([[0.8, 0.2]], alpha=0.2).all()
@@ -147,7 +176,8 @@ def test_aps_scores_are_cumulative_and_method_change_rejected():
         clf.predict_set([[0.8, 0.2]], alpha=0.2)
 
 
-def test_classification_unbounded_threshold_includes_all_classes():
+def test_classification_unbounded_threshold_includes_all_classes() -> None:
+    """Verify classification unbounded threshold includes all classes."""
     clf = classifier().calibrate([[0.8, 0.2]], ["cat"])
     with pytest.warns(UserWarning, match="infinite"):
         assert clf.predict_set([[0.1, 0.9]], alpha=0.1).all()
@@ -156,19 +186,22 @@ def test_classification_unbounded_threshold_includes_all_classes():
 @pytest.mark.parametrize(
     "proba", [[[np.nan, 0.2]], [[-0.2, 1.2]], [[0.2, 0.2]], [[0.2, 0.3, 0.5]]]
 )
-def test_malformed_estimator_probabilities_rejected(proba):
+def test_malformed_estimator_probabilities_rejected(proba: FloatArray) -> None:
+    """Verify malformed estimator probabilities rejected."""
     clf = classifier()
     with pytest.raises(ValueError):
         clf.predict_proba(proba)
 
 
 @pytest.mark.parametrize("y", [[np.nan], [np.inf], [1, 2]])
-def test_invalid_calibration_targets(y):
+def test_invalid_calibration_targets(y: ArrayLike) -> None:
+    """Verify invalid calibration targets."""
     with pytest.raises(ValueError):
         regressor().calibrate([[0]], y)
 
 
-def test_sparse_auto_calibration_and_original_estimator_untouched():
+def test_sparse_auto_calibration_and_original_estimator_untouched() -> None:
+    """Verify sparse auto calibration and original estimator untouched."""
     X = sparse.csr_matrix(np.arange(120, dtype=float).reshape(40, 3))
     y = np.arange(40, dtype=float)
     estimator = LinearRegression()
@@ -184,7 +217,8 @@ def test_sparse_auto_calibration_and_original_estimator_untouched():
     )
 
 
-def test_reproducible_split_and_training_weight_alignment():
+def test_reproducible_split_and_training_weight_alignment() -> None:
+    """Verify reproducible split and training weight alignment."""
     X = np.arange(100, dtype=float).reshape(-1, 1)
     y = np.sin(X[:, 0])
     weight = np.arange(1, 101)
@@ -203,7 +237,8 @@ def test_reproducible_split_and_training_weight_alignment():
     np.testing.assert_allclose(reference.coef_, objects[0].estimator_.coef_)
 
 
-def test_sklearn_scoring_and_grid_search():
+def test_sklearn_scoring_and_grid_search() -> None:
+    """Verify sklearn scoring and grid search."""
     X = np.arange(100, dtype=float).reshape(-1, 1)
     y = X[:, 0] * 2
     reg = ConformalRegressor(
@@ -229,11 +264,13 @@ def test_sklearn_scoring_and_grid_search():
         ConformalClassifier(LogisticRegression(), prediction_mode="point"),
     ],
 )
-def test_sklearn_estimator_contract(obj):
+def test_sklearn_estimator_contract(obj: BaseConformalPredictor) -> None:
+    """Verify sklearn estimator contract."""
     check_estimator(obj)
 
 
-def test_evaluate_and_weighted_metrics():
+def test_evaluate_and_weighted_metrics() -> None:
+    """Verify evaluate and weighted metrics."""
     reg = regressor().calibrate(np.zeros((19, 1)), np.arange(19))
     result = reg.evaluate([[0], [1]], [0, 100], alpha=0.2, sample_weight=[1, 0])
     assert result["coverage"] == 1
@@ -252,7 +289,8 @@ def test_evaluate_and_weighted_metrics():
     assert result["accuracy"] == 1
 
 
-def test_winkler_score_penalizes_missed_bounds():
+def test_winkler_score_penalizes_missed_bounds() -> None:
+    """Verify winkler score penalizes missed bounds."""
     assert interval_score([0, 5, -3], [[-1, 1]] * 3, alpha=0.2) == pytest.approx(22)
     assert (
         prediction_interval_coverage([0, 5, -3], [[-1, 1]] * 3, sample_weight=[1, 0, 0])
@@ -263,30 +301,37 @@ def test_winkler_score_penalizes_missed_bounds():
 @pytest.mark.parametrize(
     "intervals", [[], [[1, 0]], [[np.nan, 1]], [[0, 1, 2]], [[np.inf, np.inf]]]
 )
-def test_invalid_intervals_rejected(intervals):
+def test_invalid_intervals_rejected(intervals: ArrayLike) -> None:
+    """Verify invalid intervals rejected."""
     with pytest.raises(ValueError):
         prediction_interval_width(intervals)
 
 
 @pytest.mark.parametrize("weights", [[1], [-1, 1], [0, 0], [np.nan, 1]])
-def test_invalid_metric_weights(weights):
+def test_invalid_metric_weights(weights: ArrayLike) -> None:
+    """Verify invalid metric weights."""
     with pytest.raises(ValueError):
         prediction_interval_coverage([0, 0], [[-1, 1]] * 2, sample_weight=weights)
 
 
-def test_boolean_sets_require_class_order():
+def test_boolean_sets_require_class_order() -> None:
+    """Verify boolean sets require class order."""
     with pytest.raises(ValueError, match="classes"):
         prediction_set_coverage(["a"], [[True, False]])
 
 
-def test_zero_weight_unbounded_interval_ignored():
+def test_zero_weight_unbounded_interval_ignored() -> None:
+    """Verify zero weight unbounded interval ignored."""
     assert (
         prediction_interval_width([[0, 1], [-np.inf, np.inf]], sample_weight=[1, 0])
         == 1
     )
 
 
-def test_dataframe_column_selecting_pipeline():
+def test_dataframe_column_selecting_pipeline() -> tuple[
+    NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+]:
+    """Verify dataframe column selecting pipeline."""
     pd = pytest.importorskip("pandas")
     from sklearn.compose import ColumnTransformer
 
@@ -301,7 +346,8 @@ def test_dataframe_column_selecting_pipeline():
         reg.predict_point(X[["b", "a"]])
 
 
-def test_large_integer_legacy_labels_keep_precision():
+def test_large_integer_legacy_labels_keep_precision() -> None:
+    """Verify large integer legacy labels keep precision."""
     labels = (2**60 + 1, 2**60 + 2)
     clf = classifier(labels=labels).calibrate([[0.8, 0.2]] * 9, [labels[0]] * 9)
     sets, _ = clf.predict([[0.8, 0.2], [0.2, 0.8]], alpha=0.2)
@@ -310,7 +356,8 @@ def test_large_integer_legacy_labels_keep_precision():
     assert prediction_set_coverage(labels, sets) == 1
 
 
-def test_single_class_evaluation():
+def test_single_class_evaluation() -> None:
+    """Verify single class evaluation."""
     from sklearn.dummy import DummyClassifier
 
     clf = ConformalClassifier(DummyClassifier()).fit([[0]] * 10, ["only"] * 10)

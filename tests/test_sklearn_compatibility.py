@@ -1,9 +1,14 @@
 """Tests for scikit-learn compatibility."""
 
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 import pytest
+from numpy.typing import NDArray
 from sklearn.base import clone, is_classifier, is_regressor
-from sklearn.datasets import make_regression, make_classification
+from sklearn.datasets import make_classification, make_regression
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.model_selection import (
     train_test_split,
@@ -11,19 +16,20 @@ from sklearn.model_selection import (
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from conformity.classifier import ConformalClassifier
-from conformity.regressor import ConformalRegressor
+from conformity import ConformalClassifier, ConformalRegressor
 
 
 @pytest.fixture
-def regression_data():
+def regression_data() -> tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]]:
     """Fixture for regression data."""
     X, y = make_regression(n_samples=200, n_features=5, random_state=42)
     return train_test_split(X, y, test_size=0.3, random_state=42)
 
 
 @pytest.fixture
-def classification_data():
+def classification_data() -> tuple[
+    NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+]:
     """Fixture for classification data."""
     X, y = make_classification(n_samples=200, n_features=5, random_state=42)
     return train_test_split(X, y, test_size=0.3, random_state=42)
@@ -32,7 +38,10 @@ def classification_data():
 class TestBaseEstimatorCompliance:
     """Tests for BaseEstimator compliance."""
 
-    def test_get_params(self, regression_data):
+    def test_get_params(
+        self,
+        regression_data: tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]],
+    ) -> None:
         """Test get_params method."""
         estimator = LinearRegression()
         reg = ConformalRegressor(estimator=estimator)
@@ -41,7 +50,10 @@ class TestBaseEstimatorCompliance:
         assert "estimator" in params
         assert params["estimator"] == estimator
 
-    def test_set_params(self, regression_data):
+    def test_set_params(
+        self,
+        regression_data: tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]],
+    ) -> None:
         """Test set_params method."""
         reg = ConformalRegressor(LinearRegression())
 
@@ -50,19 +62,19 @@ class TestBaseEstimatorCompliance:
 
         assert reg.estimator == new_estimator
 
-    def test_set_params_returns_self(self):
+    def test_set_params_returns_self(self) -> None:
         """Test that set_params returns self."""
         reg = ConformalRegressor(LinearRegression())
         result = reg.set_params(estimator=LinearRegression())
         assert result is reg
 
-    def test_classifier_get_params(self):
+    def test_classifier_get_params(self) -> None:
         """Test get_params for ConformalClassifier."""
         clf = ConformalClassifier(LogisticRegression())
         params = clf.get_params()
         assert "estimator" in params
 
-    def test_classifier_set_params(self):
+    def test_classifier_set_params(self) -> None:
         """Test set_params for ConformalClassifier."""
         clf = ConformalClassifier(LogisticRegression())
         result = clf.set_params(estimator=LogisticRegression(max_iter=500))
@@ -72,7 +84,7 @@ class TestBaseEstimatorCompliance:
 class TestClone:
     """Tests for sklearn.base.clone compatibility."""
 
-    def test_clone_regressor(self):
+    def test_clone_regressor(self) -> None:
         """Test cloning ConformalRegressor."""
         reg = ConformalRegressor(LinearRegression())
         reg_cloned = clone(reg)
@@ -81,7 +93,7 @@ class TestClone:
         assert not hasattr(reg_cloned, "estimator_")
         assert not reg_cloned.is_calibrated_
 
-    def test_clone_classifier(self):
+    def test_clone_classifier(self) -> None:
         """Test cloning ConformalClassifier."""
         clf = ConformalClassifier(LogisticRegression())
         clf_cloned = clone(clf)
@@ -90,7 +102,10 @@ class TestClone:
         assert not hasattr(clf_cloned, "estimator_")
         assert not clf_cloned.is_calibrated_
 
-    def test_clone_fitted_regressor(self, regression_data):
+    def test_clone_fitted_regressor(
+        self,
+        regression_data: tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]],
+    ) -> None:
         """Test cloning a fitted regressor doesn't preserve fitted state."""
         X_train, X_test, y_train, y_test = regression_data
 
@@ -105,7 +120,10 @@ class TestClone:
 class TestPipelineCompatibility:
     """Tests for sklearn Pipeline compatibility."""
 
-    def test_regressor_in_pipeline(self, regression_data):
+    def test_regressor_in_pipeline(
+        self,
+        regression_data: tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]],
+    ) -> None:
         """Test ConformalRegressor in a Pipeline."""
         X_train, X_test, y_train, y_test = regression_data
 
@@ -119,7 +137,12 @@ class TestPipelineCompatibility:
         pipe.fit(X_train[:100], y_train[:100])
         assert hasattr(pipe.named_steps["regressor"], "estimator_")
 
-    def test_classifier_in_pipeline(self, classification_data):
+    def test_classifier_in_pipeline(
+        self,
+        classification_data: tuple[
+            NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+        ],
+    ) -> None:
         """Test ConformalClassifier in a Pipeline."""
         X_train, X_test, y_train, y_test = classification_data
 
@@ -133,7 +156,10 @@ class TestPipelineCompatibility:
         pipe.fit(X_train[:100], y_train[:100])
         assert hasattr(pipe.named_steps["classifier"], "estimator_")
 
-    def test_pipeline_predict_regressor(self, regression_data):
+    def test_pipeline_predict_regressor(
+        self,
+        regression_data: tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]],
+    ) -> None:
         """Test prediction through pipeline (regressor)."""
         X_train, X_test, y_train, y_test = regression_data
 
@@ -145,7 +171,12 @@ class TestPipelineCompatibility:
         y_pred, intervals = reg.predict(X_test)
         assert y_pred.shape[0] == X_test.shape[0]
 
-    def test_pipeline_predict_classifier(self, classification_data):
+    def test_pipeline_predict_classifier(
+        self,
+        classification_data: tuple[
+            NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+        ],
+    ) -> None:
         """Test prediction through pipeline (classifier)."""
         X_train, X_test, y_train, y_test = classification_data
 
@@ -161,7 +192,7 @@ class TestPipelineCompatibility:
 class TestInputValidation:
     """Tests for scikit-learn input validation."""
 
-    def test_fit_validates_input(self):
+    def test_fit_validates_input(self) -> None:
         """Test that fit validates input shapes."""
         reg = ConformalRegressor(LinearRegression())
 
@@ -170,7 +201,10 @@ class TestInputValidation:
             y = np.array([1, 2, 3])  # Mismatched size
             reg.fit(X, y)
 
-    def test_calibrate_validates_input(self, regression_data):
+    def test_calibrate_validates_input(
+        self,
+        regression_data: tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]],
+    ) -> None:
         """Test that calibrate validates input."""
         X_train, X_test, y_train, y_test = regression_data
 
@@ -180,7 +214,10 @@ class TestInputValidation:
         with pytest.raises(ValueError):
             reg.calibrate(X_test, y_test[:-5])  # Mismatched size
 
-    def test_predict_validates_input(self, regression_data):
+    def test_predict_validates_input(
+        self,
+        regression_data: tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]],
+    ) -> None:
         """Test that predict validates input."""
         X_train, X_test, y_train, y_test = regression_data
 
@@ -189,7 +226,10 @@ class TestInputValidation:
         with pytest.raises((RuntimeError, Exception)):
             reg.predict(X_test)  # Not fitted
 
-    def test_predict_rejects_uncalibrated(self, regression_data):
+    def test_predict_rejects_uncalibrated(
+        self,
+        regression_data: tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]],
+    ) -> None:
         """Test that predict rejects uncalibrated estimator."""
         X_train, X_test, y_train, y_test = regression_data
 
@@ -203,12 +243,12 @@ class TestInputValidation:
 class TestRegressorMixin:
     """Tests for RegressorMixin functionality."""
 
-    def test_conformal_regressor_has_estimator_type(self):
+    def test_conformal_regressor_has_estimator_type(self) -> None:
         """Test that sklearn identifies ConformalRegressor as a regressor."""
         reg = ConformalRegressor(LinearRegression())
         assert is_regressor(reg)
 
-    def test_conformal_regressor_is_regressor_mixin(self):
+    def test_conformal_regressor_is_regressor_mixin(self) -> None:
         """Test that ConformalRegressor inherits from RegressorMixin."""
         from sklearn.base import RegressorMixin
 
@@ -219,12 +259,12 @@ class TestRegressorMixin:
 class TestClassifierMixin:
     """Tests for ClassifierMixin functionality."""
 
-    def test_conformal_classifier_has_estimator_type(self):
+    def test_conformal_classifier_has_estimator_type(self) -> None:
         """Test that sklearn identifies ConformalClassifier as a classifier."""
         clf = ConformalClassifier(LogisticRegression())
         assert is_classifier(clf)
 
-    def test_conformal_classifier_is_classifier_mixin(self):
+    def test_conformal_classifier_is_classifier_mixin(self) -> None:
         """Test that ConformalClassifier inherits from ClassifierMixin."""
         from sklearn.base import ClassifierMixin
 
@@ -235,7 +275,10 @@ class TestClassifierMixin:
 class TestAutoCalibrationEdgeCases:
     """Tests for auto_calibrate edge cases."""
 
-    def test_auto_calibrate_with_default_split(self, regression_data):
+    def test_auto_calibrate_with_default_split(
+        self,
+        regression_data: tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]],
+    ) -> None:
         """Test auto_calibrate with default 80/20 split."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
 
@@ -245,7 +288,10 @@ class TestAutoCalibrationEdgeCases:
         assert reg.is_calibrated_
         assert hasattr(reg, "calibration_non_conformity")
 
-    def test_auto_calibrate_with_custom_split(self, regression_data):
+    def test_auto_calibrate_with_custom_split(
+        self,
+        regression_data: tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]],
+    ) -> None:
         """Test auto_calibrate with custom test_size."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
 
@@ -256,7 +302,7 @@ class TestAutoCalibrationEdgeCases:
 
         assert reg.is_calibrated_
 
-    def test_classifier_auto_calibrate(self):
+    def test_classifier_auto_calibrate(self) -> None:
         """Test auto_calibrate for classifier."""
         X, y = make_classification(n_samples=200, n_features=5, random_state=42)
 
@@ -269,7 +315,10 @@ class TestAutoCalibrationEdgeCases:
 class TestParameterPropagation:
     """Tests for parameter propagation through estimators."""
 
-    def test_fit_returns_self(self, regression_data):
+    def test_fit_returns_self(
+        self,
+        regression_data: tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]],
+    ) -> None:
         """Test that fit returns self."""
         X_train, X_test, y_train, y_test = regression_data
 
@@ -278,7 +327,10 @@ class TestParameterPropagation:
 
         assert result is reg
 
-    def test_calibrate_returns_self(self, regression_data):
+    def test_calibrate_returns_self(
+        self,
+        regression_data: tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]],
+    ) -> None:
         """Test that calibrate returns self."""
         X_train, X_test, y_train, y_test = regression_data
 
@@ -288,7 +340,10 @@ class TestParameterPropagation:
 
         assert result is reg
 
-    def test_chaining_operations(self, regression_data):
+    def test_chaining_operations(
+        self,
+        regression_data: tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]],
+    ) -> None:
         """Test method chaining."""
         X_train, X_test, y_train, y_test = regression_data
 

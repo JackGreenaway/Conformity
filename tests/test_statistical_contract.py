@@ -1,20 +1,27 @@
 """Exact finite-population rank checks, independent of Monte Carlo tolerance."""
 
+from __future__ import annotations
+
 import warnings
+from typing import Literal
 
 import numpy as np
 import pytest
+from numpy.typing import ArrayLike
 from sklearn.dummy import DummyRegressor
+from test_safety_and_api import classifier
 
 from conformity import ConformalRegressor
-from test_safety_and_api import classifier
 
 
 @pytest.mark.parametrize("alpha", [0.01, 0.2, 0.35, 0.5, 0.8])
 @pytest.mark.parametrize("scores", [[1, 2, 3, 4, 5], [1, 1, 2, 2, 3]])
-def test_all_possible_future_ranks_obey_coverage_bound(alpha, scores):
+def test_all_possible_future_ranks_obey_coverage_bound(
+    alpha: float, scores: ArrayLike
+) -> None:
     # Conditional on this unordered population, each held-out index is equally
     # likely to be the future observation. Calibration order is irrelevant.
+    """Verify all possible future ranks obey coverage bound."""
     scores = np.array(scores)
     hits = []
     for future in range(len(scores)):
@@ -35,7 +42,10 @@ def test_all_possible_future_ranks_obey_coverage_bound(alpha, scores):
 
 @pytest.mark.parametrize("method", ["lac", "aps"])
 @pytest.mark.parametrize("alpha", [0.01, 0.2, 0.35, 0.5, 0.8])
-def test_classification_rank_coverage_and_p_value_inversion(method, alpha):
+def test_classification_rank_coverage_and_p_value_inversion(
+    method: Literal["lac", "aps"], alpha: float
+) -> None:
+    """Verify classification rank coverage and p value inversion."""
     X = np.array([[0.9, 0.1], [0.7, 0.3], [0.5, 0.5], [0.5, 0.5], [0.2, 0.8]])
     y = np.array(["cat", "dog", "cat", "dog", "dog"])
     hits = []

@@ -1,15 +1,25 @@
+"""Tests for conformal regressor."""
+
+from __future__ import annotations
+
+import warnings
+from typing import Any
+
 import numpy as np
 import pytest
-import warnings
-
+from numpy.typing import NDArray
 from sklearn.datasets import make_regression
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
-from conformity.regressor import ConformalRegressor
+
+from conformity import ConformalRegressor
 
 
 @pytest.fixture
-def synthetic_regression_data():
+def synthetic_regression_data() -> tuple[
+    NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+]:
+    """Verify synthetic regression data."""
     X, y = make_regression(
         n_samples=10_000, n_features=4, n_informative=3, random_state=927
     )
@@ -17,7 +27,12 @@ def synthetic_regression_data():
     return train_test_split(X, y, test_size=0.2, random_state=42)
 
 
-def test_fit_and_calibrate(synthetic_regression_data):
+def test_fit_and_calibrate(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify fit and calibrate."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -30,7 +45,12 @@ def test_fit_and_calibrate(synthetic_regression_data):
     assert hasattr(reg, "n_calib")
 
 
-def test_predict_interval_shape(synthetic_regression_data):
+def test_predict_interval_shape(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify predict interval shape."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -45,7 +65,12 @@ def test_predict_interval_shape(synthetic_regression_data):
     assert hasattr(reg, "q_level_")
 
 
-def test_predict_without_calibration_raises(synthetic_regression_data):
+def test_predict_without_calibration_raises(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify predict without calibration raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -55,7 +80,12 @@ def test_predict_without_calibration_raises(synthetic_regression_data):
         reg.predict(X_test)
 
 
-def test_multiple_calibrations_warn(synthetic_regression_data):
+def test_multiple_calibrations_warn(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify multiple calibrations warn."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -69,7 +99,12 @@ def test_multiple_calibrations_warn(synthetic_regression_data):
         assert any("already calibrated" in str(warn.message) for warn in w)
 
 
-def test_predict_with_different_alpha(synthetic_regression_data):
+def test_predict_with_different_alpha(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify predict with different alpha."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -86,7 +121,12 @@ def test_predict_with_different_alpha(synthetic_regression_data):
     )
 
 
-def test_auto_calibrate_argument(synthetic_regression_data):
+def test_auto_calibrate_argument(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify auto calibrate argument."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -101,7 +141,12 @@ def test_auto_calibrate_argument(synthetic_regression_data):
     assert reg.is_calibrated_
 
 
-def test_interval_contains_true_value(synthetic_regression_data):
+def test_interval_contains_true_value(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify interval contains true value."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -117,7 +162,8 @@ def test_interval_contains_true_value(synthetic_regression_data):
     assert coverage > 0.85
 
 
-def test_extreme_inputs():
+def test_extreme_inputs() -> None:
+    """Verify extreme inputs."""
     X = np.array([[1e10], [-1e10], [0]])
     y = np.array([1e10, -1e10, 0])
 
@@ -136,7 +182,12 @@ def test_extreme_inputs():
     assert np.all(intervals[:, 1] >= y_pred)
 
 
-def test_single_sample_prediction(synthetic_regression_data):
+def test_single_sample_prediction(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify single sample prediction."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -151,7 +202,12 @@ def test_single_sample_prediction(synthetic_regression_data):
     assert intervals[0, 0] <= y_pred[0] <= intervals[0, 1]
 
 
-def test_alpha_boundary_values(synthetic_regression_data):
+def test_alpha_boundary_values(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify alpha boundary values."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -173,7 +229,12 @@ def test_alpha_boundary_values(synthetic_regression_data):
     )
 
 
-def test_fit_without_features_raises(synthetic_regression_data):
+def test_fit_without_features_raises(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify fit without features raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -182,7 +243,12 @@ def test_fit_without_features_raises(synthetic_regression_data):
         reg.fit(np.array([]), np.array([]))
 
 
-def test_calibrate_without_fit_raises(synthetic_regression_data):
+def test_calibrate_without_fit_raises(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify calibrate without fit raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -191,7 +257,12 @@ def test_calibrate_without_fit_raises(synthetic_regression_data):
         reg.calibrate(X_test, y_test)
 
 
-def test_mismatched_x_y_shapes_raises(synthetic_regression_data):
+def test_mismatched_x_y_shapes_raises(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify mismatched x y shapes raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -200,7 +271,12 @@ def test_mismatched_x_y_shapes_raises(synthetic_regression_data):
         reg.fit(X_train, y_train[:-10])
 
 
-def test_calibrate_with_mismatched_shapes_raises(synthetic_regression_data):
+def test_calibrate_with_mismatched_shapes_raises(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify calibrate with mismatched shapes raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -210,7 +286,12 @@ def test_calibrate_with_mismatched_shapes_raises(synthetic_regression_data):
         reg.calibrate(X_test, y_test[:-5])
 
 
-def test_prediction_intervals_monotonic(synthetic_regression_data):
+def test_prediction_intervals_monotonic(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify prediction intervals monotonic."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -224,7 +305,12 @@ def test_prediction_intervals_monotonic(synthetic_regression_data):
     assert np.all(y_pred <= intervals[:, 1])
 
 
-def test_consistent_predictions(synthetic_regression_data):
+def test_consistent_predictions(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify consistent predictions."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -239,7 +325,12 @@ def test_consistent_predictions(synthetic_regression_data):
     np.testing.assert_array_equal(intervals1, intervals2)
 
 
-def test_increasing_alpha_increases_intervals(synthetic_regression_data):
+def test_increasing_alpha_increases_intervals(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify increasing alpha increases intervals."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -258,7 +349,12 @@ def test_increasing_alpha_increases_intervals(synthetic_regression_data):
     assert all(widths[i] <= widths[i + 1] + 1e-10 for i in range(len(widths) - 1))
 
 
-def test_auto_calibrate_with_small_dataset(synthetic_regression_data):
+def test_auto_calibrate_with_small_dataset(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]]:
+    """Verify auto calibrate with small dataset."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     # Use smaller subset
@@ -278,7 +374,12 @@ def test_auto_calibrate_with_small_dataset(synthetic_regression_data):
     assert hasattr(reg, "calibration_non_conformity")
 
 
-def test_predict_different_sample_sizes(synthetic_regression_data):
+def test_predict_different_sample_sizes(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify predict different sample sizes."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -294,7 +395,12 @@ def test_predict_different_sample_sizes(synthetic_regression_data):
         assert intervals.shape == (n_samples, 2)
 
 
-def test_calibration_with_identical_features(synthetic_regression_data):
+def test_calibration_with_identical_features(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify calibration with identical features."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     # Create calibration set with identical features
@@ -308,7 +414,12 @@ def test_calibration_with_identical_features(synthetic_regression_data):
     assert reg.is_calibrated_
 
 
-def test_non_conformity_scores_are_valid(synthetic_regression_data):
+def test_non_conformity_scores_are_valid(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify non conformity scores are valid."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -324,7 +435,12 @@ def test_non_conformity_scores_are_valid(synthetic_regression_data):
     )
 
 
-def test_predict_with_all_zero_targets(synthetic_regression_data):
+def test_predict_with_all_zero_targets(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify predict with all zero targets."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     # Create dataset with all zero targets
@@ -340,7 +456,12 @@ def test_predict_with_all_zero_targets(synthetic_regression_data):
     assert intervals.shape == (X_test.shape[0], 2)
 
 
-def test_large_alpha_produces_wide_intervals(synthetic_regression_data):
+def test_large_alpha_produces_wide_intervals(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify large alpha produces wide intervals."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -356,7 +477,12 @@ def test_large_alpha_produces_wide_intervals(synthetic_regression_data):
     assert avg_width_large > avg_width_small - 1e-10
 
 
-def test_calibration_set_size_recorded(synthetic_regression_data):
+def test_calibration_set_size_recorded(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify calibration set size recorded."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())
@@ -366,7 +492,12 @@ def test_calibration_set_size_recorded(synthetic_regression_data):
     assert reg.n_calib == X_test.shape[0]
 
 
-def test_predict_returns_correct_types(synthetic_regression_data):
+def test_predict_returns_correct_types(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify predict returns correct types."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     reg = ConformalRegressor(LinearRegression())

@@ -1,19 +1,24 @@
 """Constructor configuration survives sklearn orchestration."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
+from numpy.typing import ArrayLike
 from sklearn.base import clone
 from sklearn.datasets import make_classification, make_regression
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.model_selection import GridSearchCV
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from conformity import ConformalClassifier, ConformalRegressor
+from conformity._typing import FeatureMatrix
 
 
 @pytest.mark.parametrize("classification", [False, True])
-def test_constructor_calibration_and_fit_override(classification):
+def test_constructor_calibration_and_fit_override(classification: bool) -> None:
+    """Verify constructor calibration and fit override."""
     if classification:
         X, y = make_classification(n_samples=100, random_state=0)
         model = ConformalClassifier(
@@ -28,7 +33,8 @@ def test_constructor_calibration_and_fit_override(classification):
     assert not fitted.is_calibrated_
 
 
-def test_internal_search_excludes_calibration_from_preprocessing_and_cv():
+def test_internal_search_excludes_calibration_from_preprocessing_and_cv() -> None:
+    """Verify internal search excludes calibration from preprocessing and cv."""
     X, y = make_regression(n_samples=100, random_state=0)
     search = GridSearchCV(
         make_pipeline(StandardScaler(), Ridge()), {"ridge__alpha": [0.1, 1.0]}, cv=3
@@ -48,7 +54,8 @@ def test_internal_search_excludes_calibration_from_preprocessing_and_cv():
     assert model.n_calibration_ == 40
 
 
-def test_outer_pipeline_predictions_use_fitted_preprocessing():
+def test_outer_pipeline_predictions_use_fitted_preprocessing() -> None:
+    """Verify outer pipeline predictions use fitted preprocessing."""
     X, y = make_regression(n_samples=100, random_state=0)
     pipe = make_pipeline(
         StandardScaler(), ConformalRegressor(Ridge(), prediction_mode="point")
@@ -63,7 +70,10 @@ def test_outer_pipeline_predictions_use_fitted_preprocessing():
 
 
 @pytest.mark.parametrize("classification", [False, True])
-def test_pipeline_qualified_weights_follow_internal_training_split(classification):
+def test_pipeline_qualified_weights_follow_internal_training_split(
+    classification: bool,
+) -> None:
+    """Verify pipeline qualified weights follow internal training split."""
     from sklearn.model_selection import train_test_split
 
     if classification:
@@ -89,7 +99,8 @@ def test_pipeline_qualified_weights_follow_internal_training_split(classificatio
     assert not hasattr(estimator[-1], "coef_")
 
 
-def test_outer_classifier_pipeline_and_prediction_override():
+def test_outer_classifier_pipeline_and_prediction_override() -> None:
+    """Verify outer classifier pipeline and prediction override."""
     X, y = make_classification(n_samples=100, random_state=0)
     pipe = make_pipeline(
         StandardScaler(),
@@ -108,7 +119,8 @@ def test_outer_classifier_pipeline_and_prediction_override():
 
 
 @pytest.mark.parametrize("weights", [[1], [-1] * 100, [0] * 100, [np.nan] * 100])
-def test_invalid_pipeline_qualified_weights_rejected(weights):
+def test_invalid_pipeline_qualified_weights_rejected(weights: ArrayLike) -> None:
+    """Verify invalid pipeline qualified weights rejected."""
     X, y = make_regression(n_samples=100, random_state=0)
     model = ConformalRegressor(
         make_pipeline(StandardScaler(), Ridge()), auto_calibrate=True
@@ -118,7 +130,10 @@ def test_invalid_pipeline_qualified_weights_rejected(weights):
 
 
 @pytest.mark.parametrize("classification", [False, True])
-def test_cross_validate_final_wrapper_auto_calibrates_each_fold(classification):
+def test_cross_validate_final_wrapper_auto_calibrates_each_fold(
+    classification: bool,
+) -> None:
+    """Verify cross validate final wrapper auto calibrates each fold."""
     from sklearn.model_selection import KFold, cross_validate
     from sklearn.pipeline import Pipeline
 
@@ -138,7 +153,8 @@ def test_cross_validate_final_wrapper_auto_calibrates_each_fold(classification):
         scoring = "neg_mean_absolute_error"
     pipe = Pipeline([("conformal", control)])
 
-    def coverage(fitted, X_test, y_test):
+    def coverage(fitted: Pipeline, X_test: FeatureMatrix, y_test: ArrayLike) -> float:
+        """Score held-out conformal coverage for a fitted cross-validation pipeline."""
         return fitted.named_steps["conformal"].evaluate(X_test, y_test, alpha=0.1)[
             "coverage"
         ]
@@ -175,7 +191,9 @@ def test_cross_validate_final_wrapper_auto_calibrates_each_fold(classification):
 
 
 @pytest.mark.parametrize("classification", [False, True])
-def test_cross_validate_with_preprocessing_before_final_wrapper(classification):
+def test_cross_validate_with_preprocessing_before_final_wrapper(
+    classification: bool,
+) -> None:
     """API compatibility; this layout does not establish conformal validity."""
     from sklearn.model_selection import KFold, cross_validate
 

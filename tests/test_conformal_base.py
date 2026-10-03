@@ -1,15 +1,28 @@
+"""Tests for conformal base."""
+
+from __future__ import annotations
+
+import warnings
+from typing import Any, Optional
+
 import numpy as np
 import pytest
-import warnings
-
+from numpy.typing import ArrayLike, NDArray
+from sklearn.base import BaseEstimator
 from sklearn.datasets import make_regression
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
-from conformity.base import BaseConformalPredictor
+from typing_extensions import Self
+
+from conformity import BaseConformalPredictor
+from conformity._typing import FeatureMatrix, FloatArray
 
 
 @pytest.fixture
-def synthetic_regression_data():
+def synthetic_regression_data() -> tuple[
+    NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+]:
+    """Verify synthetic regression data."""
     X, y = make_regression(
         n_samples=1_000, n_features=4, n_informative=3, random_state=927
     )
@@ -20,20 +33,29 @@ def synthetic_regression_data():
 class ConcreteConformalPredictor(BaseConformalPredictor):
     """Concrete implementation for testing abstract base class."""
 
-    def __init__(self, estimator):
+    def __init__(self, estimator: BaseEstimator) -> None:
+        """Configure the wrapped estimator and held-out calibration workflow."""
         super().__init__(estimator)
         self.estimator = estimator
 
-    def _compute_non_conformity_scores(self, X, y):
+    def _compute_non_conformity_scores(
+        self, X: FeatureMatrix, y: ArrayLike
+    ) -> FloatArray:
         """Compute absolute residuals as non-conformity scores."""
         predictions = self.estimator.predict(X)
         return np.abs(y - predictions)
 
-    def _make_prediction(self, X, q_level):
+    def _make_prediction(self, X: FeatureMatrix, q_level: float) -> FloatArray:
         """Return point predictions."""
         return self.estimator.predict(X)
 
-    def fit(self, X, y, auto_calibrate=False, tts_kwargs=None):
+    def fit(
+        self,
+        X: FeatureMatrix,
+        y: ArrayLike,
+        auto_calibrate: bool = False,
+        tts_kwargs: Optional[dict[str, Any]] = None,
+    ) -> Self:
         """Fit the estimator."""
         self.estimator.fit(X, y)
 
@@ -46,7 +68,7 @@ class ConcreteConformalPredictor(BaseConformalPredictor):
 
         return self
 
-    def calibrate(self, X, y):
+    def calibrate(self, X: FeatureMatrix, y: ArrayLike) -> Self:
         """Calibrate the conformal predictor."""
         if X.shape[0] != y.shape[0]:
             raise ValueError("X and y must have the same number of samples")
@@ -60,14 +82,19 @@ class ConcreteConformalPredictor(BaseConformalPredictor):
 
         return self
 
-    def predict(self, X, alpha=0.1):
+    def predict(self, X: FeatureMatrix, alpha: float = 0.1) -> NDArray[Any]:
         """Make predictions with conformal intervals."""
         if not self.is_calibrated_:
             raise RuntimeError("Predictor must be calibrated before making predictions")
         return self._make_prediction(X, alpha)
 
 
-def test_base_fit(synthetic_regression_data):
+def test_base_fit(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base fit."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())
@@ -78,7 +105,12 @@ def test_base_fit(synthetic_regression_data):
     assert predictor.estimator is not None
 
 
-def test_base_calibrate(synthetic_regression_data):
+def test_base_calibrate(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base calibrate."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())
@@ -92,7 +124,12 @@ def test_base_calibrate(synthetic_regression_data):
     assert predictor.n_calib == X_test.shape[0]
 
 
-def test_base_predict_without_calibration_raises(synthetic_regression_data):
+def test_base_predict_without_calibration_raises(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base predict without calibration raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())
@@ -102,7 +139,12 @@ def test_base_predict_without_calibration_raises(synthetic_regression_data):
         predictor.predict(X_test)
 
 
-def test_base_multiple_calibrations_warn(synthetic_regression_data):
+def test_base_multiple_calibrations_warn(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base multiple calibrations warn."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())
@@ -116,7 +158,12 @@ def test_base_multiple_calibrations_warn(synthetic_regression_data):
         assert any("already calibrated" in str(warn.message) for warn in w)
 
 
-def test_base_auto_calibrate(synthetic_regression_data):
+def test_base_auto_calibrate(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base auto calibrate."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())
@@ -131,7 +178,12 @@ def test_base_auto_calibrate(synthetic_regression_data):
     assert predictor.is_calibrated_
 
 
-def test_base_calibrate_without_fit_raises(synthetic_regression_data):
+def test_base_calibrate_without_fit_raises(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base calibrate without fit raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())
@@ -140,7 +192,12 @@ def test_base_calibrate_without_fit_raises(synthetic_regression_data):
         predictor.calibrate(X_test, y_test)
 
 
-def test_base_mismatched_x_y_shapes_raises(synthetic_regression_data):
+def test_base_mismatched_x_y_shapes_raises(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base mismatched x y shapes raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())
@@ -149,7 +206,12 @@ def test_base_mismatched_x_y_shapes_raises(synthetic_regression_data):
         predictor.fit(X_train, y_train[:-10])
 
 
-def test_base_calibrate_with_mismatched_shapes_raises(synthetic_regression_data):
+def test_base_calibrate_with_mismatched_shapes_raises(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base calibrate with mismatched shapes raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())
@@ -159,7 +221,12 @@ def test_base_calibrate_with_mismatched_shapes_raises(synthetic_regression_data)
         predictor.calibrate(X_test, y_test[:-5])
 
 
-def test_base_non_conformity_scores_computed(synthetic_regression_data):
+def test_base_non_conformity_scores_computed(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base non conformity scores computed."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())
@@ -172,7 +239,12 @@ def test_base_non_conformity_scores_computed(synthetic_regression_data):
     assert all(x >= 0 for x in predictor.calibration_non_conformity)
 
 
-def test_base_estimator_is_stored(synthetic_regression_data):
+def test_base_estimator_is_stored(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base estimator is stored."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     estimator = LinearRegression()
@@ -183,7 +255,12 @@ def test_base_estimator_is_stored(synthetic_regression_data):
     assert predictor.estimator is estimator
 
 
-def test_base_calibration_flag(synthetic_regression_data):
+def test_base_calibration_flag(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base calibration flag."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())
@@ -197,7 +274,12 @@ def test_base_calibration_flag(synthetic_regression_data):
     assert predictor.is_calibrated_
 
 
-def test_base_empty_fit_raises(synthetic_regression_data):
+def test_base_empty_fit_raises(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base empty fit raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())
@@ -206,7 +288,12 @@ def test_base_empty_fit_raises(synthetic_regression_data):
         predictor.fit(np.array([]), np.array([]))
 
 
-def test_base_calibration_n_calib_matches(synthetic_regression_data):
+def test_base_calibration_n_calib_matches(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base calibration n calib matches."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())
@@ -222,7 +309,12 @@ def test_base_calibration_n_calib_matches(synthetic_regression_data):
     assert predictor.n_calib == 50
 
 
-def test_base_different_estimators(synthetic_regression_data):
+def test_base_different_estimators(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base different estimators."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     from sklearn.tree import DecisionTreeRegressor
@@ -236,7 +328,12 @@ def test_base_different_estimators(synthetic_regression_data):
         assert predictor.is_calibrated_
 
 
-def test_base_fit_preserves_data_shapes(synthetic_regression_data):
+def test_base_fit_preserves_data_shapes(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]]:
+    """Verify base fit preserves data shapes."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())
@@ -251,7 +348,12 @@ def test_base_fit_preserves_data_shapes(synthetic_regression_data):
     assert y_train.shape == original_y_shape
 
 
-def test_base_calibrate_preserves_data_shapes(synthetic_regression_data):
+def test_base_calibrate_preserves_data_shapes(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]]:
+    """Verify base calibrate preserves data shapes."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())
@@ -267,7 +369,12 @@ def test_base_calibrate_preserves_data_shapes(synthetic_regression_data):
     assert y_test.shape == original_y_shape
 
 
-def test_base_single_sample_calibration(synthetic_regression_data):
+def test_base_single_sample_calibration(
+    synthetic_regression_data: tuple[
+        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
+    ],
+) -> None:
+    """Verify base single sample calibration."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
     predictor = ConcreteConformalPredictor(LinearRegression())

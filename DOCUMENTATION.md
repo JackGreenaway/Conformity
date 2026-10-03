@@ -151,3 +151,27 @@ Automatic calibration reserves 20% of each fit’s training observations by defa
 `cross_validate` clones the outer pipeline and wrapper for each fold. Set constructor `auto_calibrate=True` to make its ordinary `fit(X_fold_train, y_fold_train)` perform a fresh internal calibration split. Use `prediction_mode="point"` with standard prediction-based scorers. `return_estimator=True` returns the fitted pipeline clones, each with its own final wrapper's `estimator_`, calibration scores and `n_calibration_`. The original pipeline remains unfitted. `error_score="raise"` surfaces fitting or scoring errors directly. See the [complete cross-validation example](README.md#automatic-calibration-with-cross_validate).
 
 A custom scorer has signature `(fitted_estimator, X_test, y_test)` and returns a scalar. With the default pipeline layout, `fitted_estimator[-1].evaluate(fitted_estimator[:-1].transform(X_test), y_test, alpha=0.1)["coverage"]` scores fold coverage. Each calibration partition comes only from the fold's training data. For the usual coverage proof, learned preprocessing belongs inside the wrapped estimator, so the split excludes calibration observations before any learned transformations fit. A wrapper that is the final outer step cannot move the split ahead of preceding steps.
+
+
+## Type annotations and code documentation
+
+Every Python module, class, function, and method in `src` and `tests` has a
+docstring, and every function parameter and return value is annotated (implicit
+`self` is excluded). Ruff enforces this with the `ANN` rules and docstring
+presence rules. Run `ruff check src tests` and `pytest` from the development
+environment before submitting changes.
+
+Array inputs use NumPy `ArrayLike`; feature matrices also accept SciPy sparse
+matrices and arrays. DataFrames implement the array conversion protocol and retain
+their columns at runtime. Numeric predictions use float64 arrays, boolean
+prediction sets use boolean arrays, and class labels preserve their original
+dtype. Array dimensions and finite-value constraints remain runtime checks.
+`predict` has a union return type because constructor configuration and per-call
+flags determine whether it returns points or a conformal tuple. Use
+`predict_point`, `predict_interval`, or `predict_set` for a fixed return type.
+
+`Self` describes chainable fitting and calibration methods. `Any` is restricted
+to arbitrary label dtypes and estimator-specific metadata such as fit keywords
+and split overrides. The packaged `py.typed` marker makes these inline annotations
+available to downstream type checkers. Ruff checks annotation presence; it does
+not perform static type checking.
