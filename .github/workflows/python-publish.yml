@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           python-version: '3.12'
 
@@ -25,7 +25,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          python - <<'PY'
+          uv run --no-project python - <<'PY'
           import os
           import tomllib
           from pathlib import Path
@@ -38,15 +38,17 @@ jobs:
           PY
 
       - name: Install library and release dependencies
-        run: python -m pip install -e . pytest pytest-cov ruff pandas build twine
+        run: |
+          uv venv
+          uv pip install -e . pytest pytest-cov ruff pandas twine
       - name: Lint
-        run: ruff check src tests
+        run: uv run --no-sync ruff check src tests
       - name: Test
-        run: pytest --cov=conformity --cov-report=term-missing
+        run: uv run --no-sync pytest --cov=conformity --cov-report=term-missing
       - name: Build and check distributions
         run: |
-          python -m build
-          python -m twine check --strict dist/*
+          uv build
+          uv run --no-sync twine check --strict dist/*
       - name: Upload distributions
         uses: actions/upload-artifact@v4
         with:
@@ -68,11 +70,12 @@ jobs:
         with:
           name: release-dists
           path: dist/
+      - name: Set up uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
       - name: Publish release distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: dist/
-          password: ${{ secrets.PYPI_API_TOKEN }}
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: uv publish dist/*
 
   github-release:
     runs-on: ubuntu-latest
