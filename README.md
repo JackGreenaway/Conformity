@@ -14,31 +14,34 @@ Use a sklearn pipeline with a point-mode conformal regressor, constructor-level 
 from sklearn.datasets import make_regression
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import cross_validate
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import make_pipeline as pipeline
 from sklearn.preprocessing import StandardScaler
 from conformity import ConformalRegressor
 
 X, y = make_regression(n_samples=1000, noise=20, random_state=42)
 X_new = X[:5]  # Replace with new observations in practice.
 
-pipe = Pipeline([
-    ("scaler", StandardScaler()),
-    ("conformal", ConformalRegressor(
+pipe = pipeline(
+    StandardScaler(),
+    ConformalRegressor(
         Ridge(),
         prediction_mode="point",
         auto_calibrate=True,
         random_state=42,
-    )),
-])
+    ),
+)
 
+# During development: score point predictions.
 results = cross_validate(pipe, X, y, cv=5, scoring="r2")
 
+# Fit the final pipeline; calibration happens internally.
 pipe.fit(X, y)
 points = pipe.predict(X_new)
+# Later: request intervals for your own testing.
 points, intervals = pipe.predict(X_new, return_interval=True)
 ```
 
-This is the default usage pattern in these docs. `Pipeline` is imported directly from `sklearn.pipeline` and takes a list of named steps. Point mode works with ordinary sklearn scorers; request intervals explicitly with `return_interval=True` (optionally pass `alpha`, which defaults to `0.05`). `cross_validate` fits clones, so fit the original pipeline before predicting.
+This is the default usage pattern in these docs. `pipeline` aliases sklearn’s `make_pipeline`, which accepts estimators directly and names steps automatically. Automatic calibration reserves 20% of each fit’s training observations by default. Prediction mode controls output independently of calibration. Point mode works with ordinary sklearn scorers; request intervals explicitly with `return_interval=True` (optionally pass `alpha`, which defaults to `0.05`). `cross_validate` fits clones, so fit the original pipeline before predicting.
 
 The outer scaler fits on all observations passed to each pipeline fit, including the final wrapper's internal calibration features. This workflow is supported, but the usual split-conformal coverage proof does not apply to that placement of learned preprocessing. For that guarantee, put learned preprocessing inside the wrapped estimator, as described in [THEORY.md](THEORY.md#pipeline-placement-and-selection).
 
@@ -81,16 +84,16 @@ from conformity import ConformalClassifier
 
 X, y = load_iris(return_X_y=True)
 X_new = X[:5]  # Replace with new observations in practice.
-pipe = Pipeline([
-    ("scaler", StandardScaler()),
-    ("conformal", ConformalClassifier(
+pipe = pipeline(
+    StandardScaler(),
+    ConformalClassifier(
         LogisticRegression(max_iter=1000),
         method="aps",  # or "lac" (default)
         prediction_mode="point",
         auto_calibrate=True,
         random_state=42,
-    )),
-])
+    ),
+)
 results = cross_validate(pipe, X, y, cv=5, scoring="accuracy")
 pipe.fit(X, y)
 labels = pipe.predict(X_new)

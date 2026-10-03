@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from sklearn.base import clone
+from sklearn.base import clone, is_classifier, is_regressor
 from sklearn.datasets import make_regression, make_classification
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.model_selection import (
@@ -204,10 +204,9 @@ class TestRegressorMixin:
     """Tests for RegressorMixin functionality."""
 
     def test_conformal_regressor_has_estimator_type(self):
-        """Test that ConformalRegressor has _estimator_type attribute."""
+        """Test that sklearn identifies ConformalRegressor as a regressor."""
         reg = ConformalRegressor(LinearRegression())
-        assert hasattr(reg, "_estimator_type")
-        assert reg._estimator_type == "regressor"
+        assert is_regressor(reg)
 
     def test_conformal_regressor_is_regressor_mixin(self):
         """Test that ConformalRegressor inherits from RegressorMixin."""
@@ -221,10 +220,9 @@ class TestClassifierMixin:
     """Tests for ClassifierMixin functionality."""
 
     def test_conformal_classifier_has_estimator_type(self):
-        """Test that ConformalClassifier has _estimator_type attribute."""
+        """Test that sklearn identifies ConformalClassifier as a classifier."""
         clf = ConformalClassifier(LogisticRegression())
-        assert hasattr(clf, "_estimator_type")
-        assert clf._estimator_type == "classifier"
+        assert is_classifier(clf)
 
     def test_conformal_classifier_is_classifier_mixin(self):
         """Test that ConformalClassifier inherits from ClassifierMixin."""

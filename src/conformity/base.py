@@ -5,7 +5,7 @@ from numbers import Real
 import warnings
 
 import numpy as np
-from sklearn.base import BaseEstimator, clone
+from sklearn.base import BaseEstimator, clone, is_regressor
 from sklearn.model_selection import train_test_split
 from sklearn.utils.validation import check_is_fitted, validate_data
 
@@ -127,7 +127,7 @@ class BaseConformalPredictor(BaseEstimator, ABC):
             y,
             accept_sparse=("csr", "csc"),
             dtype=None,
-            y_numeric=getattr(self, "_estimator_type", None) == "regressor",
+            y_numeric=is_regressor(self),
         )
         # Keep DataFrames for column-selecting pipelines, while validating above.
         X_fit = X if hasattr(X, "iloc") else X_checked
@@ -146,9 +146,10 @@ class BaseConformalPredictor(BaseEstimator, ABC):
                 weights.shape != (len(y_checked),)
                 or not np.isfinite(weights).all()
                 or (weights < 0).any()
-                or weights.sum() <= 0
             ):
                 raise ValueError(f"{name} must be finite, nonnegative, and match y")
+            if not weights.any():
+                raise ValueError(f"{name} must contain at least one non-zero weight")
             weight_params[name] = weights
         if auto_calibrate:
             options = {

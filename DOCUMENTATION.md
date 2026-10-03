@@ -125,6 +125,29 @@ The suite checks sklearn estimator compliance in point mode, cloning, model sele
 
 ## Cross-validation lifecycle
 
+The default workflow scores point predictions during development and requests internally calibrated intervals later:
+
+```python
+from sklearn.linear_model import Ridge
+from sklearn.model_selection import cross_validate
+from sklearn.pipeline import make_pipeline as pipeline
+from sklearn.preprocessing import StandardScaler
+from conformity import ConformalRegressor
+
+pipe = pipeline(
+    StandardScaler(),
+    ConformalRegressor(
+        Ridge(), prediction_mode="point", auto_calibrate=True, random_state=42
+    ),
+)
+results = cross_validate(pipe, X, y, cv=5, scoring="r2")
+pipe.fit(X, y)
+points = pipe.predict(X_new)
+points, intervals = pipe.predict(X_new, return_interval=True, alpha=0.1)
+```
+
+Automatic calibration reserves 20% of each fit’s training observations by default. Point mode controls output independently of calibration. The preceding scaler fits before the internal split, so this layout supports interval testing but does not establish the usual split-conformal coverage guarantee.
+
 `cross_validate` clones the outer pipeline and wrapper for each fold. Set constructor `auto_calibrate=True` to make its ordinary `fit(X_fold_train, y_fold_train)` perform a fresh internal calibration split. Use `prediction_mode="point"` with standard prediction-based scorers. `return_estimator=True` returns the fitted pipeline clones, each with its own final wrapper's `estimator_`, calibration scores and `n_calibration_`. The original pipeline remains unfitted. `error_score="raise"` surfaces fitting or scoring errors directly. See the [complete cross-validation example](README.md#automatic-calibration-with-cross_validate).
 
 A custom scorer has signature `(fitted_estimator, X_test, y_test)` and returns a scalar. With the default pipeline layout, `fitted_estimator[-1].evaluate(fitted_estimator[:-1].transform(X_test), y_test, alpha=0.1)["coverage"]` scores fold coverage. Each calibration partition comes only from the fold's training data. For the usual coverage proof, learned preprocessing belongs inside the wrapped estimator, so the split excludes calibration observations before any learned transformations fit. A wrapper that is the final outer step cannot move the split ahead of preceding steps.
