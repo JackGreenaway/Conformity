@@ -175,13 +175,8 @@ See [DOCUMENTATION.md](DOCUMENTATION.md) for the API and [THEORY.md](THEORY.md) 
 
 ## Releases
 
-Set `project.version` in `pyproject.toml`, commit the change, and push a matching `v`-prefixed tag:
+Set `project.version` in `pyproject.toml`, run `uv lock`, and commit both files. Create and publish a GitHub release with a matching `v`-prefixed tag (for example, `v0.1.4`). Pushing a tag alone does not publish the package.
 
-```bash
-git tag v0.1.2
-git push origin v0.1.2
-```
-
-The release workflow validates the tag against the package version, runs lint and tests, builds and checks the wheel and source archive, publishes them to PyPI, and creates a GitHub release with generated notes and both distributions attached. Use a new version for each release; PyPI does not allow overwriting existing files.
+The release workflow builds the wheel and source archive, then publishes them to PyPI. Tests and lint run separately on pushes and pull requests. Use a new version for each release; PyPI does not allow overwriting existing files.
 
 Configure a `PYPI_API_TOKEN` repository or `pypi` environment secret, or configure [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/using-a-publisher/) for `.github/workflows/python-publish.yml` and the `pypi` environment and leave the secret unset. Any protection rules on the `pypi` environment apply before publishing.
