@@ -32,18 +32,24 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
     >>> from sklearn.datasets import load_iris
     >>> from sklearn.linear_model import LogisticRegression
     >>> from sklearn.model_selection import train_test_split
-    >>> from sklearn.pipeline import make_pipeline
+    >>> from sklearn.pipeline import Pipeline
     >>> from sklearn.preprocessing import StandardScaler
     >>> from conformity import ConformalClassifier
     >>> X, y = load_iris(return_X_y=True)
     >>> X_dev, X_test, y_dev, y_test = train_test_split(
     ...     X, y, test_size=0.2, random_state=0
     ... )
-    >>> model = ConformalClassifier(
-    ...     make_pipeline(StandardScaler(), LogisticRegression(max_iter=500)),
-    ...     method="lac", calibration_size=0.25, random_state=1,
+    >>> X_train, X_calib, y_train, y_calib = train_test_split(
+    ...     X_dev, y_dev, test_size=0.25, random_state=1
     ... )
-    >>> _ = model.fit(X_dev, y_dev)
+    >>> model = Pipeline([
+    ...     ("scaler", StandardScaler()),
+    ...     ("conformal", ConformalClassifier(
+    ...         LogisticRegression(max_iter=500), method="lac", auto_calibrate=False
+    ...     )),
+    ... ])
+    >>> _ = model.fit(X_train, y_train)
+    >>> _ = model[-1].calibrate(model[:-1].transform(X_calib), y_calib)
     >>> mask, probabilities = model.predict(X_test, alpha=0.1, return_set=True)
     >>> mask.shape, probabilities.shape
     ((30, 3), (30, 3))

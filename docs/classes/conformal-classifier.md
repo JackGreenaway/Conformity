@@ -58,18 +58,24 @@ Split conformal classification using LAC or deterministic APS scores.
 >>> from sklearn.datasets import load_iris
 >>> from sklearn.linear_model import LogisticRegression
 >>> from sklearn.model_selection import train_test_split
->>> from sklearn.pipeline import make_pipeline
+>>> from sklearn.pipeline import Pipeline
 >>> from sklearn.preprocessing import StandardScaler
 >>> from conformity import ConformalClassifier
 >>> X, y = load_iris(return_X_y=True)
 >>> X_dev, X_test, y_dev, y_test = train_test_split(
 ...     X, y, test_size=0.2, random_state=0
 ... )
->>> model = ConformalClassifier(
-...     make_pipeline(StandardScaler(), LogisticRegression(max_iter=500)),
-...     method="lac", calibration_size=0.25, random_state=1,
+>>> X_train, X_calib, y_train, y_calib = train_test_split(
+...     X_dev, y_dev, test_size=0.25, random_state=1
 ... )
->>> _ = model.fit(X_dev, y_dev)
+>>> model = Pipeline([
+...     ("scaler", StandardScaler()),
+...     ("conformal", ConformalClassifier(
+...         LogisticRegression(max_iter=500), method="lac", auto_calibrate=False
+...     )),
+... ])
+>>> _ = model.fit(X_train, y_train)
+>>> _ = model[-1].calibrate(model[:-1].transform(X_calib), y_calib)
 >>> mask, probabilities = model.predict(X_test, alpha=0.1, return_set=True)
 >>> mask.shape, probabilities.shape
 ((30, 3), (30, 3))
@@ -102,7 +108,7 @@ Split conformal classification using LAC or deterministic APS scores.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L131">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">calibrate</span>(X, y)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L137">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">calibrate</span>(X, y)</code></pre></div>
 
 Replace held-out scores and return this predictor for method chaining.
 
@@ -132,7 +138,7 @@ Replace held-out scores and return this predictor for method chaining.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L357">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">evaluate</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L363">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">evaluate</span>(
     X,
     y,
     alpha=0.05,
@@ -171,7 +177,7 @@ Return accuracy, log loss, coverage and prediction set diagnostics.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L186">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L188">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
     X,
     y,
     auto_calibrate=None,
@@ -251,7 +257,7 @@ Get parameters for this estimator.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L285">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L291">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict</span>(
     X,
     alpha=0.05,
     *,
@@ -288,7 +294,7 @@ Return point labels, or (boolean membership sets, probabilities).
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L250">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_p_values</span>(X)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L256">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_p_values</span>(X)</code></pre></div>
 
 Return conservative conformal p-values, including calibration ties.
 
@@ -318,7 +324,7 @@ Return conservative conformal p-values, including calibration ties.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L174">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_point</span>(X)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L180">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_point</span>(X)</code></pre></div>
 
 Return the wrapped estimator's labels without calibration.
 
@@ -347,7 +353,7 @@ Return the wrapped estimator's labels without calibration.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L198">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_proba</span>(X)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L204">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_proba</span>(X)</code></pre></div>
 
 Return validated probabilities in classes_ order.
 
@@ -376,7 +382,7 @@ Return validated probabilities in classes_ order.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L221">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_set</span>(X, alpha=0.05)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L227">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_set</span>(X, alpha=0.05)</code></pre></div>
 
 Return a boolean membership matrix of shape (n_samples, n_classes).
 
@@ -407,7 +413,7 @@ Return a boolean membership matrix of shape (n_samples, n_classes).
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L328">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">score</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L334">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">score</span>(
     X,
     y,
     sample_weight=None,
@@ -471,7 +477,7 @@ Request metadata passed to the `fit` method.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L137">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L139">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
 
 Set sklearn parameters and invalidate fitted and calibrated state.
 

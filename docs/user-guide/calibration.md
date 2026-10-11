@@ -14,6 +14,8 @@ If $k \le n$, the threshold is the $k$th sorted score; otherwise it is infinite.
 
 ## Choosing a calibration size
 
+For a wrapper on the final pipeline model, reserve calibration before fitting any learned preprocessing, set `auto_calibrate=False`, then calibrate on transformed held-out features. For automatic calibration with learned preprocessing, wrap the entire pipeline so its internal split precedes every fitting step. The [pipeline guide](estimators.md#why-the-split-matters) explains why these workflows differ.
+
 A larger calibration partition gives a finer score quantile but leaves fewer fitting observations. `calibration_size` accepts a fraction or sample count. `random_state` controls the automatic split; `tts_kwargs` can override train/test split options. A reproducible split does not make temporal, grouped or shifted observations exchangeable.
 
 For finite regression bounds you need at least $\alpha \ge 1/(n+1)$. Selecting alpha after viewing final calibration outcomes undermines the fixed-procedure interpretation. Repeated predictions can reuse stored scores without refitting, but their errors need not be independent.

@@ -125,16 +125,16 @@ The default workflow scores point predictions during development and requests in
 ```python
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import cross_validate
-from sklearn.pipeline import make_pipeline as pipeline
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from conformity import ConformalRegressor
 
-pipe = pipeline(
-    StandardScaler(),
-    ConformalRegressor(
+pipe = Pipeline([
+    ("scaler", StandardScaler()),
+    ("conformal", ConformalRegressor(
         Ridge(), auto_calibrate=True, random_state=42
-    ),
-)
+    )),
+])
 results = cross_validate(pipe, X, y, cv=5, scoring="r2")
 pipe.fit(X, y)
 points = pipe.predict(X_new)

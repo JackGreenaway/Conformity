@@ -6,11 +6,13 @@
 
 Can ordinary scikit-learn model selection coexist with uncertainty calibration? Constructor options survive cloning, and `score` uses point performance. Every fold may calibrate its own clone, but final calibration must be independent of the procedure that selected the model.
 
+This example wraps the whole pipeline because `cross_validate` calls ordinary `fit` on each clone, and we want that call to hold out calibration before the scaler learns anything. A wrapper on the final Ridge model would split only after the outer scaler had fitted on all fold-training rows, including the internal calibration features. That layout still supports point scoring, but the usual split-conformal proof would not apply to its uncertainty output. For a final-step wrapper with learned preprocessing, manage the calibration split before fitting each fold, or use that layout for your final model with a separate held-out calibration set. See [placement choices](../user-guide/estimators.md#why-the-split-matters).
+
 ```python
 import numpy as np
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import KFold, cross_validate
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from conformity import ConformalRegressor
@@ -18,7 +20,10 @@ from conformity import ConformalRegressor
 rng = np.random.default_rng(51)
 X = rng.normal(size=(300, 3))
 y = X[:, 0] + rng.normal(size=300)
-model = ConformalRegressor(make_pipeline(StandardScaler(), Ridge()), random_state=52)
+# Wrap the whole pipeline here so each automatic fold split precedes scaling.
+model = ConformalRegressor(
+    Pipeline([("scaler", StandardScaler()), ("ridge", Ridge())]), random_state=52
+)
 results = cross_validate(
     model,
     X,

@@ -46,29 +46,35 @@ Requires Python **3.9+**, NumPy >=2.0.2 and scikit-learn >=1.6.1. Install `matpl
 
 ## Quick start
 
-Reserve a test set for evaluation. Put learned preprocessing **inside the wrapped estimator** so it never fits on calibration observations. Here `alpha=0.1` requests 90% marginal coverage:
+Reserve test and calibration sets before fitting. Put the conformal wrapper on the final model and fit preprocessing only on the training split. Here `alpha=0.1` requests 90% marginal coverage:
 
 ```python
 from sklearn.datasets import make_regression
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import train_test_split
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from conformity import ConformalRegressor
 
 X, y = make_regression(n_samples=1000, n_features=5, noise=15, random_state=7)
 X_dev, X_test, y_dev, y_test = train_test_split(X, y, test_size=0.25, random_state=8)
-model = ConformalRegressor(
-    make_pipeline(StandardScaler(), Ridge()),
-    calibration_size=0.25,
-    random_state=9,
-).fit(X_dev, y_dev)
+X_train, X_calib, y_train, y_calib = train_test_split(
+    X_dev, y_dev, test_size=0.25, random_state=9
+)
+model = Pipeline(
+    [
+        ("scaler", StandardScaler()),
+        ("conformal", ConformalRegressor(Ridge(), auto_calibrate=False)),
+    ]
+).fit(X_train, y_train)
+conformal = model.named_steps["conformal"]
+conformal.calibrate(model[:-1].transform(X_calib), y_calib)
 
 points, intervals = model.predict(X_test, alpha=0.1, return_interval=True)
 assert points.shape == (250,)
 assert intervals.shape == (250, 2)
-print(model.evaluate(X_test, y_test, alpha=0.1))
+print(conformal.evaluate(model[:-1].transform(X_test), y_test, alpha=0.1))
 ```
 
 The report pairs point error with coverage, width and interval score. Bounds are symmetric and constant-width at a fixed alpha; lower miscoverage usually makes them wider. Test coverage fluctuates around the population target. The [complete walkthrough](docs/getting-started.md) explains the configuration, results and next steps.

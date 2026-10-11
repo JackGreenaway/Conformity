@@ -22,7 +22,7 @@ That rank symmetry is the central idea. Conformal prediction chooses a threshold
 | Calibration | Measure held-out scores and set the conformal threshold | Fitting and selection of the score function |
 | Test | Evaluate coverage, width, set size and decision usefulness | Learning and final calibration |
 
-Let $\hat f$ denote the fitted model, including every learned preprocessing step. Once calibration starts, this score-producing procedure must be fixed. Putting a scaler inside the wrapped estimator lets Conformity split the data before fitting that scaler. An outer learned scaler that sees the internal calibration rows does not meet this standard split-conformal argument. See [estimator and pipeline placement](user-guide/estimators.md).
+Let $\hat f$ denote the fitted model, including every learned preprocessing step. Once calibration starts, this score-producing procedure must be fixed. With a wrapper on the final model, hold out calibration data before fitting the pipeline, then transform calibration features with the fitted preprocessing steps. For automatic calibration, wrapping the whole pipeline lets Conformity split before fitting its scaler. An outer learned scaler that sees the internal calibration rows does not meet this standard split-conformal argument. See [estimator and pipeline placement](user-guide/estimators.md).
 
 ## Nonconformity scores
 

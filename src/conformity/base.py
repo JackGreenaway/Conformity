@@ -46,8 +46,10 @@ class BaseConformalPredictor(BaseEstimator, ABC):
 
     Predictions follow the sklearn point-prediction contract.
     ``calibration_size`` and ``random_state`` control automatic splitting.
-    Put learned preprocessing inside the wrapped estimator's Pipeline so that
-    calibration observations are excluded from all fitting steps.
+    For a final-step wrapper, hold out calibration before fitting the Pipeline
+    and calibrate on features transformed by its fitted preprocessing steps.
+    With automatic splitting, wrap the whole Pipeline to exclude calibration
+    observations from all fitting steps.
 
     Attributes
     ----------

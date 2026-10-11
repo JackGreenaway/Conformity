@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import KFold, cross_validate
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from conformity import ConformalRegressor
@@ -9,7 +9,10 @@ from conformity import ConformalRegressor
 rng = np.random.default_rng(51)
 X = rng.normal(size=(300, 3))
 y = X[:, 0] + rng.normal(size=300)
-model = ConformalRegressor(make_pipeline(StandardScaler(), Ridge()), random_state=52)
+# Wrap the whole pipeline here so each automatic fold split precedes scaling.
+model = ConformalRegressor(
+    Pipeline([("scaler", StandardScaler()), ("ridge", Ridge())]), random_state=52
+)
 results = cross_validate(
     model,
     X,

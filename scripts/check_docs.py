@@ -85,14 +85,14 @@ import numpy as np
 from sklearn.datasets import make_regression
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import cross_validate
-from sklearn.pipeline import make_pipeline as pipeline
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from conformity import ConformalRegressor
 X_all, y_all = make_regression(n_samples=1200, n_features=4, noise=20, random_state=42)
 X, y = X_all[:1000], y_all[:1000]
 X_new = X_all[1000:1005]
 X_calib, y_calib = X_all[1005:], y_all[1005:]
-pipe = pipeline(StandardScaler(), ConformalRegressor(Ridge(), random_state=42))
+pipe = Pipeline([("scaler", StandardScaler()), ("conformal", ConformalRegressor(Ridge(), random_state=42))])
 """
     outputs = {}
     paths = [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]

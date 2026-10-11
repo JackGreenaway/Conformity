@@ -25,7 +25,7 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
     >>> from sklearn.datasets import make_regression
     >>> from sklearn.linear_model import Ridge
     >>> from sklearn.model_selection import train_test_split
-    >>> from sklearn.pipeline import make_pipeline
+    >>> from sklearn.pipeline import Pipeline
     >>> from sklearn.preprocessing import StandardScaler
     >>> from conformity import ConformalRegressor
     >>> X, y = make_regression(
@@ -37,15 +37,16 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
     >>> X_train, X_calib, y_train, y_calib = train_test_split(
     ...     X_dev, y_dev, test_size=1 / 3, random_state=2
     ... )
-    >>> model = ConformalRegressor(
-    ...     make_pipeline(StandardScaler(), Ridge()), auto_calibrate=False
-    ... )
+    >>> model = Pipeline([
+    ...     ("scaler", StandardScaler()),
+    ...     ("conformal", ConformalRegressor(Ridge(), auto_calibrate=False)),
+    ... ])
     >>> _ = model.fit(X_train, y_train)
-    >>> _ = model.calibrate(X_calib, y_calib)
+    >>> _ = model[-1].calibrate(model[:-1].transform(X_calib), y_calib)
     >>> points, intervals = model.predict(X_test, alpha=0.1, return_interval=True)
     >>> points.shape, intervals.shape
     ((30,), (30, 2))
-    >>> model.n_calibration_
+    >>> model[-1].n_calibration_
     30
     """
 

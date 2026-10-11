@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.datasets import make_classification
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from conformity import ConformalClassifier, prediction_set_coverage
@@ -17,12 +17,22 @@ X, raw_y = make_classification(
 )
 y = np.array(["billing", "technical", "account"])[raw_y]
 X_dev, X_test, y_dev, y_test = train_test_split(X, y, test_size=0.25, random_state=22)
-model = ConformalClassifier(
-    make_pipeline(StandardScaler(), LogisticRegression(max_iter=500)),
-    method="lac",
-    calibration_size=0.25,
-    random_state=23,
-).fit(X_dev, y_dev)
+X_train, X_calib, y_train, y_calib = train_test_split(
+    X_dev, y_dev, test_size=0.25, random_state=23
+)
+model = Pipeline(
+    [
+        ("scaler", StandardScaler()),
+        (
+            "conformal",
+            ConformalClassifier(
+                LogisticRegression(max_iter=500), method="lac", auto_calibrate=False
+            ),
+        ),
+    ]
+).fit(X_train, y_train)
+conformal = model.named_steps["conformal"]
+conformal.calibrate(model[:-1].transform(X_calib), y_calib)
 mask, probabilities = model.predict(X_test, alpha=0.1, return_set=True)
 labels = [model.classes_[row].tolist() for row in mask]
 coverage = prediction_set_coverage(y_test, mask, classes=model.classes_)
@@ -33,7 +43,9 @@ assert set(model.classes_) == {"billing", "technical", "account"}
 needs_review = mask.sum(axis=1) != 1
 assert needs_review.shape == (225,)
 assert 0 <= coverage <= 1
-for metric, value in model.evaluate(X_test, y_test, alpha=0.1).items():
+for metric, value in conformal.evaluate(
+    model[:-1].transform(X_test), y_test, alpha=0.1
+).items():
     print(f"{metric}: {value:.3f}")
 print("First three candidate teams:", labels[:3])
 print("Tickets needing review:", int(needs_review.sum()))

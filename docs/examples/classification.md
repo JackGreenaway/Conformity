@@ -8,14 +8,16 @@ Which team should receive a support ticket: billing, technical support or accoun
 
 ## Configuration choices
 
-We use a synthetic three-class dataset as a stand-in for six numeric ticket features, string team labels to demonstrate column mapping, LAC scores and 10% target miscoverage. These simulated features are not real ticket text; an actual text workflow would need its feature extractor inside the wrapped model. The scaler belongs inside the wrapped model. The test and internal calibration splits are random and unstratified, keeping row selection independent of observed outcomes. The test split reserves 225 tickets; the wrapper reserves 169 calibration rows from the remaining 675 and fits on 506.
+The final-step wrapper keeps scaling separate from classification. We use manual calibration so the scaler and classifier are fitted before either sees calibration rows. `Pipeline` does not forward custom `calibrate` or `evaluate` methods, so those calls use the final wrapper and features transformed by the fitted scaler. If calibration must happen automatically during `fit`, wrap the whole pipeline instead; see [placement choices](../user-guide/estimators.md#why-the-split-matters).
+
+We use a synthetic three-class dataset as a stand-in for six numeric ticket features, string team labels to demonstrate column mapping, LAC scores and 10% target miscoverage. These simulated features are not real ticket text; an actual text workflow would fit its feature extractor only on training data. The scaler precedes a wrapper around the final classifier. The test and calibration splits are random and unstratified, keeping row selection independent of observed outcomes. The test split reserves 225 tickets; we hold out 169 calibration rows from the remaining 675 before fitting the pipeline on 506.
 
 ```python
 import numpy as np
 from sklearn.datasets import make_classification
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from conformity import ConformalClassifier, prediction_set_coverage
@@ -30,12 +32,22 @@ X, raw_y = make_classification(
 )
 y = np.array(["billing", "technical", "account"])[raw_y]
 X_dev, X_test, y_dev, y_test = train_test_split(X, y, test_size=0.25, random_state=22)
-model = ConformalClassifier(
-    make_pipeline(StandardScaler(), LogisticRegression(max_iter=500)),
-    method="lac",
-    calibration_size=0.25,
-    random_state=23,
-).fit(X_dev, y_dev)
+X_train, X_calib, y_train, y_calib = train_test_split(
+    X_dev, y_dev, test_size=0.25, random_state=23
+)
+model = Pipeline(
+    [
+        ("scaler", StandardScaler()),
+        (
+            "conformal",
+            ConformalClassifier(
+                LogisticRegression(max_iter=500), method="lac", auto_calibrate=False
+            ),
+        ),
+    ]
+).fit(X_train, y_train)
+conformal = model.named_steps["conformal"]
+conformal.calibrate(model[:-1].transform(X_calib), y_calib)
 mask, probabilities = model.predict(X_test, alpha=0.1, return_set=True)
 labels = [model.classes_[row].tolist() for row in mask]
 coverage = prediction_set_coverage(y_test, mask, classes=model.classes_)
@@ -46,7 +58,9 @@ assert set(model.classes_) == {"billing", "technical", "account"}
 needs_review = mask.sum(axis=1) != 1
 assert needs_review.shape == (225,)
 assert 0 <= coverage <= 1
-for metric, value in model.evaluate(X_test, y_test, alpha=0.1).items():
+for metric, value in conformal.evaluate(
+    model[:-1].transform(X_test), y_test, alpha=0.1
+).items():
     print(f"{metric}: {value:.3f}")
 print("First three candidate teams:", labels[:3])
 print("Tickets needing review:", int(needs_review.sum()))
