@@ -1,19 +1,16 @@
 # API reference
 
-Import the public API from `conformity`. Signatures, parameter descriptions, fitted attributes, properties and public methods below and on the class pages are generated from the live implementation. Source links point to this repository or to the inherited scikit-learn implementation.
+Public imports are available from `conformity`.
 
-## Choosing a component
+## Classes
 
-| Component | When to use it | Reference |
-| --- | --- | --- |
-| `BaseConformalPredictor` | Extend or understand the calibration lifecycle | [Class reference](classes/base-conformal-predictor.md) |
-| `ConformalRegressor` | Numeric outcome intervals | [Class reference](classes/conformal-regressor.md) |
-| `ConformalClassifier` | Categorical prediction sets | [Class reference](classes/conformal-classifier.md) |
-| Public metrics | Evaluate coverage and efficiency on independent data | Definitions below |
+| Class | Reference |
+| --- | --- |
+| `BaseConformalPredictor` | [BaseConformalPredictor](classes/base-conformal-predictor.md) |
+| `ConformalRegressor` | [ConformalRegressor](classes/conformal-regressor.md) |
+| `ConformalClassifier` | [ConformalClassifier](classes/conformal-classifier.md) |
 
-## Shared estimator behavior
-
-Constructors retain configuration, `fit` trains a fresh clone, and `set_params` invalidates fitted/calibrated state. Point predictions work after fitting; uncertainty output needs calibration. `score` measures point performance. Fit and evaluation weights do not weight calibration. See [pipelines](user-guide/estimators.md) and [calibration limits](user-guide/calibration.md).
+## Functions
 
 <!-- BEGIN GENERATED REFERENCE -->
 ## prediction_set_coverage {#prediction-set-coverage}
@@ -84,9 +81,6 @@ Mean interval width; unbounded intervals have infinite width.
 )</code></pre></div>
 
 Mean Winkler score: width plus 2/alpha times each missed-bound distance.
-
-    Lower is better; combines sharpness and miscoverage. Infinite intervals
-    have infinite score. Alpha must match that used to construct intervals.
 
 ### Parameters
 

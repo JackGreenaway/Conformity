@@ -1,5 +1,7 @@
 """Validate source versions, release tags and built archive metadata."""
 
+from __future__ import annotations
+
 import argparse
 import ast
 import email
@@ -15,7 +17,7 @@ import conformity
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def literal_version(source):
+def literal_version(source: str | bytes) -> str:
     """Read the explicit package version without executing archive contents."""
     for statement in ast.parse(source).body:
         if isinstance(statement, ast.AnnAssign) and isinstance(
@@ -32,7 +34,7 @@ def literal_version(source):
     raise ValueError("Archive has no explicit __version__")
 
 
-def check_distributions(directory, version):
+def check_distributions(directory: Path, version: str) -> None:
     """Check exactly one wheel and sdist and their embedded code and metadata."""
     paths = list(directory.iterdir())
     wheels = list(directory.glob("*.whl"))
@@ -52,7 +54,7 @@ def check_distributions(directory, version):
         wheel_version = literal_version(archive.read("conformity/__init__.py"))
     with tarfile.open(sources[0]) as archive:
 
-        def read(suffix):
+        def read(suffix: str) -> bytes:
             matches = [
                 member
                 for member in archive.getmembers()
@@ -76,7 +78,7 @@ def check_distributions(directory, version):
         raise ValueError("Distribution versions disagree with source")
 
 
-def main():
+def main() -> None:
     """Verify a release before creation or trusted publishing."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tag", default=os.environ.get("RELEASE_TAG"))

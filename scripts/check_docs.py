@@ -15,7 +15,7 @@ from build_api_reference import CLASSES, public_methods
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def check_coverage():
+def check_coverage() -> None:
     """Ensure every exported component, parameter and method is documented."""
     api = (ROOT / "docs/api.md").read_text()
     for name in conformity.__all__:
@@ -60,7 +60,7 @@ def check_coverage():
             )
 
 
-def main():
+def main() -> None:
     """Lint, optionally format, and execute Python fences as isolated examples."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--format", action="store_true")
@@ -108,7 +108,7 @@ pipe = pipeline(StandardScaler(), ConformalRegressor(Ridge(), random_state=42))
                     count += len(blocks)
                 continue
 
-            def check(match):
+            def check(match: re.Match[str]) -> str:
                 nonlocal count
                 code = match[1]
                 result = subprocess.run(

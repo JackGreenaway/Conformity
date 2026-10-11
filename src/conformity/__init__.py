@@ -20,7 +20,7 @@ from .metrics import (
 )
 from .regressor import ConformalRegressor
 
-__version__: str = "0.1.7"
+__version__: str = "0.1.8"
 
 __all__: list[str] = [
     "BaseConformalPredictor",

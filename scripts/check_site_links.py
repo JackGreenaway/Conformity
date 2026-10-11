@@ -1,5 +1,7 @@
 """Check rendered local links, anchors and assets under the Pages repository path."""
 
+from __future__ import annotations
+
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urljoin, urlsplit
@@ -11,13 +13,17 @@ BASE = "https://jackgreenaway.github.io/Conformity/"
 class Page(HTMLParser):
     """Collect rendered targets and references without network requests."""
 
-    def __init__(self, path):
+    def __init__(self, path: Path) -> None:
+        """Parse an HTML file and collect its anchors and local references."""
         super().__init__()
         self.ids = set()
         self.links = []
         self.feed(path.read_text())
 
-    def handle_starttag(self, tag, attributes):
+    def handle_starttag(
+        self, tag: str, attributes: list[tuple[str, str | None]]
+    ) -> None:
+        """Record anchor targets and references from an opening HTML tag."""
         attrs = dict(attributes)
         if "id" in attrs:
             self.ids.add(attrs["id"])
@@ -28,7 +34,7 @@ class Page(HTMLParser):
                 self.links.append(attrs[key])
 
 
-def main():
+def main() -> None:
     """Resolve links as a browser would on GitHub Pages, including fragments."""
     pages = {path.resolve(): Page(path) for path in ROOT.rglob("*.html")}
     if not pages:

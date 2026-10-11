@@ -1,5 +1,18 @@
 # Estimators and pipelines
 
+## Choosing a component
+
+| Component | When to use it |
+| --- | --- |
+| `ConformalRegressor` | A single numeric target needs a held-out prediction range without a parametric noise assumption; see [regression guidance](regression.md). |
+| `ConformalClassifier` | A categorical decision should expose several plausible labels or trigger review; see [classification guidance](classification.md). |
+| `BaseConformalPredictor` | You are extending the calibration lifecycle with a new score; use a concrete wrapper for ordinary prediction. |
+| Public metrics and `evaluate` | You need to assess coverage and efficiency on independent observations; see [diagnostics](diagnostics.md). |
+
+## Shared estimator behavior
+
+Constructors retain configuration, `fit` trains a fresh clone, and `set_params` invalidates fitted and calibrated state. Point predictions work after fitting; uncertainty output needs calibration. `score` measures point performance. Fit and evaluation weights do not weight calibration.
+
 ## Keep calibration out of learning
 
 Use a conformal wrapper around the **whole fitted preprocessing and prediction pipeline**. The wrapper clones its constructor `estimator`, fits the clone as `estimator_`, and leaves the original unfitted. Dense arrays, CSR/CSC sparse matrices and pandas DataFrames are accepted, subject to the wrapped model's own requirements. DataFrame column names are retained for column-selecting pipelines.
@@ -36,6 +49,10 @@ Constructor `auto_calibrate=True` supports normal scikit-learn `fit`, cloning an
 An outer preprocessing step followed by a conformal wrapper is supported computationally, but preprocessing then learns from the internal calibration features. That placement does not satisfy the usual split-conformal proof. See [the preserved pipeline discussion](../legacy/THEORY.md#pipeline-placement-and-selection).
 
 Fit weights and step-qualified `*__sample_weight` vectors are validated and sliced with the fitting split. Calibration remains unweighted. Other fit metadata is forwarded unchanged; callers must handle its alignment. Weighted evaluation describes a weighted test population and does not establish weighted calibration coverage.
+
+## Extending the base class
+
+`BaseConformalPredictor` is abstract: subclasses must implement `calibrate` to compute and store held-out scores. Its shared lifecycle manages the fitted clone, input validation, score storage and finite-sample thresholds. A new scoring method also needs its own prediction-region construction and statistical justification; inheriting the lifecycle alone does not establish weighted or conditional coverage.
 
 ## Next steps
 

@@ -1,21 +1,5 @@
 # BaseConformalPredictor
 
-## About
-
-The shared abstract lifecycle for cloned estimators and split calibration.
-
-## Why use it?
-
-Read this when implementing a new conformal score or understanding fitted-state invalidation. Instantiate a concrete regressor or classifier for ordinary use.
-
-## Examples
-
-[Estimator lifecycle](../user-guide/estimators.md) explains the question, configuration, results and next steps.
-
-## Practical notes
-
-Subclasses must implement calibration. The lifecycle does not provide weighted or conditional coverage. Keep final calibration independent of learned preprocessing and model selection.
-
 <!-- BEGIN GENERATED REFERENCE -->
 ## Reference
 
@@ -32,11 +16,6 @@ Subclasses must implement calibration. The lifecycle does not provide weighted o
 
 Wrap a cloned estimator with held-out, unweighted split calibration.
 
-Predictions follow the sklearn point-prediction contract.
-`calibration_size` and `random_state` control automatic splitting.
-Put learned preprocessing inside the wrapped estimator's Pipeline so that
-calibration observations are excluded from all fitting steps.
-
 ### Attributes
 
 <dl class="api-fields">
@@ -52,8 +31,6 @@ calibration observations are excluded from all fitting steps.
 <dt><code class="api-field-name">q_level_</code> <span class="api-field-type">float</span></dt><dd><p>Most recent threshold, including infinity when the rank exceeds n.</p></dd>
 <dt><code class="api-field-name">is_calibrated_</code> <span class="api-field-type">bool</span></dt><dd><p>Whether held-out scores exist. Refitting clears calibration state.</p></dd>
 </dl>
-
-Configure the wrapped estimator and held-out calibration workflow.
 
 ### Parameters
 
@@ -108,11 +85,6 @@ Replace calibration scores using data independent of model fitting.
 
 Fit a fresh clone; optionally reserve an independent calibration split.
 
-        Extra fit parameters are forwarded unchanged to the underlying estimator.
-        `sample_weight` and step-qualified `*__sample_weight` vectors are
-        validated and sliced with an automatic split. Other metadata is passed
-        unchanged. Calibration remains unweighted.
-
 #### Parameters
 
 <dl class="api-fields">
@@ -133,9 +105,6 @@ Fit a fresh clone; optionally reserve an independent calibration split.
 <div class="api-signature"><a class="api-source" href="https://scikit-learn.org/stable/modules/generated/sklearn.base.BaseEstimator.html#sklearn.base.BaseEstimator.get_metadata_routing">[inherited API]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">get_metadata_routing</span>()</code></pre></div>
 
 Get metadata routing of this object.
-
-Please check :ref:`User Guide <metadata_routing>` on how the routing
-mechanism works.
 
 #### Returns
 
@@ -179,32 +148,6 @@ Get parameters for this estimator.
 )</code></pre></div>
 
 Request metadata passed to the `fit` method.
-
-Note that this method is only relevant if
-`enable_metadata_routing=True` (see :func:`sklearn.set_config`).
-Please see :ref:`User Guide <metadata_routing>` on how the routing
-mechanism works.
-
-The options for each parameter are:
-
-- `True`: metadata is requested, and passed to `fit` if provided. The request is ignored if metadata is not provided.
-
-- `False`: metadata is not requested and the meta-estimator will not pass it to `fit`.
-
-- `None`: metadata is not requested, and the meta-estimator will raise an error if the user provides it.
-
-- `str`: metadata should be passed to the meta-estimator with this given alias instead of the original name.
-
-The default (`sklearn.utils.metadata_routing.UNCHANGED`) retains the
-existing request. This allows you to change the request for some
-parameters and not others.
-
-.. versionadded:: 1.3
-
-.. note::
-    This method is only relevant if this estimator is used as a
-    sub-estimator of a meta-estimator, e.g. used inside a
-    :class:`~sklearn.pipeline.Pipeline`. Otherwise it has no effect.
 
 #### Parameters
 

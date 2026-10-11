@@ -1,10 +1,13 @@
 """Generate scikit-learn-style class references from live signatures/docstrings."""
 
+from __future__ import annotations
+
 import argparse
 import html
 import inspect
 import re
 from pathlib import Path
+from typing import Any, Callable
 
 import conformity
 
@@ -18,7 +21,8 @@ START = "<!-- BEGIN GENERATED REFERENCE -->"
 END = "<!-- END GENERATED REFERENCE -->"
 
 
-def signature(obj):
+def signature(obj: Callable[..., Any]) -> str:
+    """Render callable parameters without annotations or the self argument."""
     sig = inspect.signature(obj)
     parameters = [
         p.replace(annotation=inspect.Parameter.empty)
@@ -30,7 +34,10 @@ def signature(obj):
     )
 
 
-def signature_block(obj, name, *, is_class=False):
+def signature_block(
+    obj: Callable[..., Any], name: str, *, is_class: bool = False
+) -> str:
+    """Render an HTML signature with a link to its source implementation."""
     parameters = []
     keyword_separator = False
     for param in inspect.signature(obj).parameters.values():
@@ -76,16 +83,21 @@ def signature_block(obj, name, *, is_class=False):
     )
 
 
-def inline(text):
+def inline(text: str) -> str:
+    """Escape text and render inline code from NumPy-style docstrings."""
     text = html.escape(text)
     return re.sub(r"``(.*?)``", r"<code>\1</code>", text)
 
 
-def render_doc(doc, level):
+def render_doc(doc: str, level: int, *, include_summary: bool = True) -> str:
+    """Render a short summary and structured reference fields from a docstring."""
     sections = re.split(r"\n([A-Za-z ]+)\n-{3,}\n", inspect.cleandoc(doc))
-    output = [sections[0].replace("``", "`").strip() + "\n"]
+    # Reference pages contain the short code contract and structured fields.
+    # Extended explanations, examples and rationale belong in the user guide.
+    summary = sections[0].split("\n\n", 1)[0].replace("``", "`").strip()
+    output = [summary + "\n"] if include_summary else []
     for heading, body in zip(sections[1::2], sections[2::2]):
-        if heading in {"Examples", "See Also"}:
+        if heading not in {"Parameters", "Attributes", "Returns", "Raises"}:
             continue
         output.append(f"{'#' * level} {heading}\n")
         if heading in {"Parameters", "Attributes", "Returns", "Raises"}:
@@ -108,7 +120,8 @@ def render_doc(doc, level):
     return "\n".join(output)
 
 
-def public_methods(cls):
+def public_methods(cls: type) -> dict[str, Callable[..., Any]]:
+    """Collect public callable members, including inherited estimator methods."""
     return {
         name: obj
         for name, obj in inspect.getmembers(cls, callable)
@@ -116,18 +129,23 @@ def public_methods(cls):
     }
 
 
-def reference(cls):
+def reference(cls: type) -> str:
+    """Generate the constructor, fitted fields and public method reference."""
     name = cls.__name__
     output = [
         "## Reference\n",
         signature_block(cls, name, is_class=True),
         '<div class="api-class-body" markdown="1">\n',
         render_doc(inspect.getdoc(cls) or "", 3),
-        render_doc(inspect.getdoc(cls.__init__) or "", 3),
+        render_doc(inspect.getdoc(cls.__init__) or "", 3, include_summary=False),
     ]
     if cls is not conformity.BaseConformalPredictor:
         output.append(
-            render_doc(inspect.getdoc(conformity.BaseConformalPredictor) or "", 3)
+            render_doc(
+                inspect.getdoc(conformity.BaseConformalPredictor) or "",
+                3,
+                include_summary=False,
+            )
         )
     output.append("### Methods\n\n| Method | Purpose |\n| --- | --- |")
     for method, obj in public_methods(cls).items():
@@ -150,7 +168,8 @@ def reference(cls):
     return "\n".join(output).strip()
 
 
-def main():
+def main() -> None:
+    """Regenerate marked reference blocks or verify they match the source."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
