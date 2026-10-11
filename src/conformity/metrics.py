@@ -89,7 +89,7 @@ def prediction_set_coverage(
     classes
         Unique class labels in boolean membership-column order.
     sample_weight
-        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+        Optional finite, nonnegative weights; fitting or evaluation only, never calibration.
     Returns
     -------
     result : float
@@ -102,6 +102,12 @@ def prediction_set_coverage(
     >>> prediction_set_coverage(["billing", "account", "billing"], sets,
     ...                         classes=["billing", "account"])
     1.0
+
+    Raises
+    ------
+    ValueError
+        If input shapes, values, weights or configuration are invalid.
+
     """
     mask = _sets(prediction_set)
     y = _vector(y_true, len(mask), "y_true")
@@ -124,7 +130,7 @@ def prediction_set_size(
     prediction_set
         Boolean membership matrix in classes order.
     sample_weight
-        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+        Optional finite, nonnegative weights; fitting or evaluation only, never calibration.
     Returns
     -------
     result : float
@@ -135,6 +141,12 @@ def prediction_set_size(
     >>> from conformity import prediction_set_size
     >>> prediction_set_size([[True, False], [False, False], [True, True]])
     1.0
+
+    Raises
+    ------
+    ValueError
+        If input shapes, values, weights or configuration are invalid.
+
     """
     return _average(_sets(prediction_set).sum(axis=1), sample_weight)
 
@@ -149,7 +161,7 @@ def prediction_set_empty_rate(
     prediction_set
         Boolean membership matrix in classes order.
     sample_weight
-        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+        Optional finite, nonnegative weights; fitting or evaluation only, never calibration.
     Returns
     -------
     result : float
@@ -160,6 +172,12 @@ def prediction_set_empty_rate(
     >>> from conformity import prediction_set_empty_rate
     >>> prediction_set_empty_rate([[True, False], [False, False]])
     0.5
+
+    Raises
+    ------
+    ValueError
+        If input shapes, values, weights or configuration are invalid.
+
     """
     return _average(_sets(prediction_set).sum(axis=1) == 0, sample_weight)
 
@@ -174,7 +192,7 @@ def prediction_set_singleton_rate(
     prediction_set
         Boolean membership matrix in classes order.
     sample_weight
-        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+        Optional finite, nonnegative weights; fitting or evaluation only, never calibration.
     Returns
     -------
     result : float
@@ -185,6 +203,12 @@ def prediction_set_singleton_rate(
     >>> from conformity import prediction_set_singleton_rate
     >>> prediction_set_singleton_rate([[True, False], [True, True]])
     0.5
+
+    Raises
+    ------
+    ValueError
+        If input shapes, values, weights or configuration are invalid.
+
     """
     return _average(_sets(prediction_set).sum(axis=1) == 1, sample_weight)
 
@@ -204,7 +228,7 @@ def prediction_interval_coverage(
     prediction_intervals
         Ordered lower/upper bounds of shape (n_samples, 2).
     sample_weight
-        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+        Optional finite, nonnegative weights; fitting or evaluation only, never calibration.
     Returns
     -------
     result : float
@@ -215,6 +239,12 @@ def prediction_interval_coverage(
     >>> from conformity import prediction_interval_coverage
     >>> prediction_interval_coverage([1.0, 4.0], [[0.0, 2.0], [1.0, 3.0]])
     0.5
+
+    Raises
+    ------
+    ValueError
+        If input shapes, values, weights or configuration are invalid.
+
     """
     intervals = _intervals(prediction_intervals)
     y = _targets(y_true, len(intervals))
@@ -231,7 +261,7 @@ def prediction_interval_width(
     prediction_intervals
         Ordered lower/upper bounds of shape (n_samples, 2).
     sample_weight
-        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+        Optional finite, nonnegative weights; fitting or evaluation only, never calibration.
     Returns
     -------
     result : float
@@ -242,6 +272,12 @@ def prediction_interval_width(
     >>> from conformity import prediction_interval_width
     >>> prediction_interval_width([[0.0, 2.0], [1.0, 3.0]])
     2.0
+
+    Raises
+    ------
+    ValueError
+        If input shapes, values, weights or configuration are invalid.
+
     """
     intervals = _intervals(prediction_intervals)
     return _average(intervals[:, 1] - intervals[:, 0], sample_weight)
@@ -268,7 +304,7 @@ def interval_score(
     alpha
         Miscoverage probability strictly between zero and one.
     sample_weight
-        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+        Optional finite, nonnegative weights; fitting or evaluation only, never calibration.
     Returns
     -------
     result : float
@@ -279,6 +315,12 @@ def interval_score(
     >>> from conformity import interval_score
     >>> interval_score([1.0, 4.0], [[0.0, 2.0], [1.0, 3.0]], alpha=0.1)
     12.0
+
+    Raises
+    ------
+    ValueError
+        If input shapes, values, weights or configuration are invalid.
+
     """
     alpha = validate_alpha(alpha)
     intervals = _intervals(prediction_intervals)

@@ -22,9 +22,11 @@ Pandas is a development dependency so DataFrame compatibility checks run rather 
 
 ## Maintain the documentation
 
-The theme, CSS, custom navigation, dark default and light-mode toggle follow the directly inspected `polars-learn` checkout (reference commit `f8dc9bf`). All local URLs use MkDocs URL filters and relative Markdown paths. The canonical repository prefix is `/Conformity/`, including its capital C.
+The existing MkDocs theme is adapted to scikit-learn’s section navigation, central reading column, page contents, signature panels and structured API fields. Both dark and light modes use the same navigation and keyboard focus indicators. All local URLs use MkDocs URL filters and relative Markdown paths. The canonical repository prefix is `/Conformity/`, including its capital C.
 
 Edit source docstrings for signatures, parameters, fitted attributes and method behavior; then regenerate references. The generator replaces only marked regions, preserving authored guidance around them. `--check` rejects stale references. `check_docs.py` checks public export, parameter, fitted attribute and public method coverage, lints Python examples, and executes each block in an isolated subprocess and temporary working directory. Scikit-learn-style API examples are generated from source `Examples` docstring sections as `pycon` transcripts; their displayed outputs are checked with doctest both in the source suite and in the rendered Markdown example checks.
+
+The three gallery workflows include downloadable Python scripts and captured output. The example checker verifies both against execution in the locked environment; `--format` refreshes them when an intentional change alters results. Review refreshed output before committing.
 
 Format new examples with `python scripts/check_docs.py --format` through the locked uv command above. Existing guides are preserved in `docs/legacy/`: their contextual examples execute as a complete page with a seeded synthetic-data fixture, without reformatting. Keep `DOCUMENTATION.md` and `THEORY.md` copies synchronized if you edit their originals. The original README is preserved in `docs/legacy/README.md`; the root README is now the concise entry point.
 
@@ -38,7 +40,7 @@ Choose a fresh empty output directory to avoid mixing versions. The release grou
 uv sync --locked --group docs --group release --python 3.12
 uv run --locked --group docs --group release --python 3.12 python -m build --no-isolation --outdir /tmp/conformity-release-dist
 uv run --locked --group docs --group release --python 3.12 python -m twine check --strict /tmp/conformity-release-dist/*
-uv run --locked --group docs --group release --python 3.12 python scripts/check_release.py --tag v0.1.7 --dist /tmp/conformity-release-dist
+uv run --locked --group docs --group release --python 3.12 python scripts/check_release.py --tag v0.1.8 --dist /tmp/conformity-release-dist
 ```
 
 The final command checks project.version, explicit `conformity.__version__`, the supplied tag, archive metadata, embedded versions, distribution name and Python support. The workflow creates distributions in a fresh runner temporary directory; local `dist/` files are never published.
@@ -78,3 +80,15 @@ If publishing fails after release creation, fix the setup and rerun **Upload Pyt
 The failed run created the `v0.1.7` GitHub release successfully; its PyPI upload was rejected. Do not run **Create GitHub Release** again for that version: its existing-tag check will correctly fail.
 
 After committing these workflow fixes to `main`, start a new publisher run for the existing release by converting it to a draft and publishing it again through GitHub Releases. The `release: published` path checks out the existing tag and validates/builds that source before uploading it. This publishes the tagged version, not any later uncommitted documentation edits. Confirm that the PyPI publisher settings above are in place. Rerunning the old failed reusable-workflow jobs alone uses the old workflow revision and does not apply this fix.
+
+## Documentation design references
+
+Inspected directly on 11 October 2026: scikit-learn’s
+[user guide](https://scikit-learn.org/stable/user_guide.html),
+[examples gallery](https://scikit-learn.org/stable/auto_examples/index.html),
+[StandardScaler class reference](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html),
+and [train_test_split function reference](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html).
+The guide separates conceptual explanations from callable contracts; the gallery
+organizes complete workflows by question; API pages pair generated signatures
+with structured fields, methods, source links and short executable examples.
+Conformity retains MkDocs rather than adding a second documentation framework.

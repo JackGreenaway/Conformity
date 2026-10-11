@@ -70,17 +70,17 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
 
         Parameters
         ----------
-        estimator
+        estimator : BaseEstimator
             Cloneable sklearn classifier implementing predict_proba.
-        method
+        method : {'lac', 'aps'}
             Use lac (1 - probability) or aps (cumulative ranked probability).
-        auto_calibrate
+        auto_calibrate : bool or None
             Reserve held-out calibration data during fit; defaults to True.
-        tts_kwargs
+        tts_kwargs : dict or None
             Optional train_test_split overrides, applied only with auto_calibrate.
-        calibration_size
+        calibration_size : float or int
             Calibration fraction or sample count; defaults to 0.2.
-        random_state
+        random_state : int, RandomState or None
             Seed or RandomState for reproducible automatic splits.
         """
         super().__init__(
@@ -133,10 +133,23 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
-        y
+        y : array-like of shape (n_samples,)
             One target per sample; classification labels follow the fitted classes.
+
+        Returns
+        -------
+        self : object
+            Predictor with replacement calibration scores.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+
         """
         X, y = self._validate_calibration(X, y)
         matches = y[:, None] == self.classes_[None, :]
@@ -163,8 +176,21 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
+
+        Returns
+        -------
+        predictions : ndarray of shape (n_samples,)
+            Point predictions from the fitted estimator.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+
         """
         X = self._validate_X(X)
         return self.estimator_.predict(X)
@@ -174,8 +200,21 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
+
+        Returns
+        -------
+        probabilities : ndarray of shape (n_samples, n_classes)
+            Finite class probabilities in fitted classes_ order.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+
         """
         return self._probabilities(self._validate_X(X))
 
@@ -184,10 +223,25 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
-        alpha
+        alpha : float
             Miscoverage probability strictly between zero and one.
+
+        Returns
+        -------
+        membership : ndarray of bool, shape (n_samples, n_classes)
+            Included labels in classes_ order; empty and all-class sets are permitted.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+        RuntimeError
+            If conformal output is requested before calibration.
+
         """
         X = self._validate_X(X)
         threshold = self._calibrated_threshold(alpha)
@@ -198,8 +252,23 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
+
+        Returns
+        -------
+        p_values : ndarray of shape (n_samples, n_classes)
+            Conservative conformal p-values in classes_ order, including ties.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+        RuntimeError
+            If conformal output is requested before calibration.
+
         """
         X = self._validate_X(X)
         if not self.is_calibrated_:
@@ -224,12 +293,27 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
-        alpha
+        alpha : float
             Miscoverage probability strictly between zero and one.
-        return_set
+        return_set : bool
             Request conformal output alongside ordinary predictions.
+
+        Returns
+        -------
+        predictions : ndarray or tuple of ndarray
+            Point labels, or (membership, probabilities) when return_set=True.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+        RuntimeError
+            If conformal output is requested before calibration.
+
         """
         if not isinstance(return_set, (bool, np.bool_)):
             raise ValueError("return_set must be boolean")
@@ -248,12 +332,25 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
-        y
+        y : array-like of shape (n_samples,)
             One target per sample; classification labels follow the fitted classes.
-        sample_weight
-            Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+        sample_weight : array-like of shape (n_samples,) or None
+            Optional finite, nonnegative weights; fitting or evaluation only, never calibration.
+
+        Returns
+        -------
+        score : float
+            Point-prediction R² for regression or accuracy for classification.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+
         """
         return accuracy_score(y, self.predict_point(X), sample_weight=sample_weight)
 
@@ -269,14 +366,29 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
-        y
+        y : array-like of shape (n_samples,)
             One target per sample; classification labels follow the fitted classes.
-        alpha
+        alpha : float
             Miscoverage probability strictly between zero and one.
-        sample_weight
-            Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+        sample_weight : array-like of shape (n_samples,) or None
+            Optional finite, nonnegative weights; fitting or evaluation only, never calibration.
+
+        Returns
+        -------
+        report : dict of str to float
+            Keys are accuracy, log_loss, coverage, mean_size, empty_rate and singleton_rate.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+        RuntimeError
+            If conformal output is requested before calibration.
+
         """
         from sklearn.metrics import log_loss
 

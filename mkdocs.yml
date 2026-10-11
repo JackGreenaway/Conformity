@@ -17,15 +17,17 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Getting started: getting-started.md
-  - Plotting: plotting.md
-  - Theory: theory.md
   - User guide:
+      - Overview: user-guide/index.md
       - Estimators and pipelines: user-guide/estimators.md
       - Regression intervals: user-guide/regression.md
       - Classification sets: user-guide/classification.md
       - Calibration and guarantees: user-guide/calibration.md
       - Diagnostics and errors: user-guide/diagnostics.md
-  - Classes:
+      - Theory: theory.md
+      - Plotting: plotting.md
+  - API reference:
+      - Overview and functions: api.md
       - BaseConformalPredictor: classes/base-conformal-predictor.md
       - ConformalRegressor: classes/conformal-regressor.md
       - ConformalClassifier: classes/conformal-classifier.md
@@ -34,7 +36,6 @@ nav:
       - Regression decisions: examples/regression.md
       - Classification review: examples/classification.md
       - Cross-validation: examples/cross-validation.md
-  - API reference: api.md
   - Existing documentation:
       - Original workflows: legacy/README.md
       - Original API guide: legacy/DOCUMENTATION.md

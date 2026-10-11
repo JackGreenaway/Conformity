@@ -19,21 +19,21 @@ Read more in the [User Guide](../user-guide/classification.md).
 
 Split conformal classification using LAC or deterministic APS scores.
 
+### Parameters
+
+<dl class="api-fields">
+<dt><code class="api-field-name">estimator</code> <span class="api-field-type">BaseEstimator</span></dt><dd><p>Cloneable sklearn classifier implementing predict_proba.</p></dd>
+<dt><code class="api-field-name">method</code> <span class="api-field-type">{&#x27;lac&#x27;, &#x27;aps&#x27;}, default=&#x27;lac&#x27;</span></dt><dd><p>Use lac (1 - probability) or aps (cumulative ranked probability).</p></dd>
+<dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">bool or None, default=True</span></dt><dd><p>Reserve held-out calibration data during fit; defaults to True.</p></dd>
+<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">dict or None, default=None</span></dt><dd><p>Optional train_test_split overrides, applied only with auto_calibrate.</p></dd>
+<dt><code class="api-field-name">calibration_size</code> <span class="api-field-type">float or int, default=0.2</span></dt><dd><p>Calibration fraction or sample count; defaults to 0.2.</p></dd>
+<dt><code class="api-field-name">random_state</code> <span class="api-field-type">int, RandomState or None, default=None</span></dt><dd><p>Seed or RandomState for reproducible automatic splits.</p></dd>
+</dl>
+
 ### Attributes
 
 <dl class="api-fields">
 <dt><code class="api-field-name">method_</code> <span class="api-field-type">{&quot;lac&quot;, &quot;aps&quot;}</span></dt><dd><p>Score method recorded by successful calibration; changing it requires recalibration. Shared fitted attributes are documented on the base class.</p></dd>
-</dl>
-
-### Parameters
-
-<dl class="api-fields">
-<dt><code class="api-field-name">estimator</code></dt><dd><p>Cloneable sklearn classifier implementing predict_proba.</p></dd>
-<dt><code class="api-field-name">method</code></dt><dd><p>Use lac (1 - probability) or aps (cumulative ranked probability).</p></dd>
-<dt><code class="api-field-name">auto_calibrate</code></dt><dd><p>Reserve held-out calibration data during fit; defaults to True.</p></dd>
-<dt><code class="api-field-name">tts_kwargs</code></dt><dd><p>Optional train_test_split overrides, applied only with auto_calibrate.</p></dd>
-<dt><code class="api-field-name">calibration_size</code></dt><dd><p>Calibration fraction or sample count; defaults to 0.2.</p></dd>
-<dt><code class="api-field-name">random_state</code></dt><dd><p>Seed or RandomState for reproducible automatic splits.</p></dd>
 </dl>
 
 ### Attributes
@@ -109,8 +109,21 @@ Replace held-out scores and return this predictor for method chaining.
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">X</code></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
-<dt><code class="api-field-name">y</code></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
+<dt><code class="api-field-name">X</code> <span class="api-field-type">{array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)</span></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
+<dt><code class="api-field-name">y</code> <span class="api-field-type">array-like of shape (n_samples,)</span></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
+</dl>
+
+#### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">self</code> <span class="api-field-type">object</span></dt><dd><p>Predictor with replacement calibration scores.</p></dd>
+</dl>
+
+#### Raises
+
+<dl class="api-fields">
+<dt><code class="api-field-name">ValueError</code></dt><dd><p>If input shapes, values, weights or configuration are invalid.</p></dd>
+<dt><code class="api-field-name">NotFittedError</code></dt><dd><p>If fit has not established a fitted estimator.</p></dd>
 </dl>
 
 </div>
@@ -119,7 +132,7 @@ Replace held-out scores and return this predictor for method chaining.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L260">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">evaluate</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L357">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">evaluate</span>(
     X,
     y,
     alpha=0.05,
@@ -132,10 +145,24 @@ Return accuracy, log loss, coverage and prediction set diagnostics.
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">X</code></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
-<dt><code class="api-field-name">y</code></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
-<dt><code class="api-field-name">alpha</code></dt><dd><p>Miscoverage probability strictly between zero and one.</p></dd>
-<dt><code class="api-field-name">sample_weight</code></dt><dd><p>Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.</p></dd>
+<dt><code class="api-field-name">X</code> <span class="api-field-type">{array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)</span></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
+<dt><code class="api-field-name">y</code> <span class="api-field-type">array-like of shape (n_samples,)</span></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
+<dt><code class="api-field-name">alpha</code> <span class="api-field-type">float, default=0.05</span></dt><dd><p>Miscoverage probability strictly between zero and one.</p></dd>
+<dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">array-like of shape (n_samples,) or None, default=None</span></dt><dd><p>Optional finite, nonnegative weights; fitting or evaluation only, never calibration.</p></dd>
+</dl>
+
+#### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">report</code> <span class="api-field-type">dict of str to float</span></dt><dd><p>Keys are accuracy, log_loss, coverage, mean_size, empty_rate and singleton_rate.</p></dd>
+</dl>
+
+#### Raises
+
+<dl class="api-fields">
+<dt><code class="api-field-name">ValueError</code></dt><dd><p>If input shapes, values, weights or configuration are invalid.</p></dd>
+<dt><code class="api-field-name">NotFittedError</code></dt><dd><p>If fit has not established a fitted estimator.</p></dd>
+<dt><code class="api-field-name">RuntimeError</code></dt><dd><p>If conformal output is requested before calibration.</p></dd>
 </dl>
 
 </div>
@@ -144,7 +171,7 @@ Return accuracy, log loss, coverage and prediction set diagnostics.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L167">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L186">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
     X,
     y,
     auto_calibrate=None,
@@ -159,12 +186,25 @@ Fit a fresh clone; optionally reserve an independent calibration split.
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">X</code></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
-<dt><code class="api-field-name">y</code></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
-<dt><code class="api-field-name">auto_calibrate</code></dt><dd><p>Reserve an independent calibration split when fitting.</p></dd>
-<dt><code class="api-field-name">tts_kwargs</code></dt><dd><p>Optional train_test_split overrides; requires automatic calibration.</p></dd>
-<dt><code class="api-field-name">sample_weight</code></dt><dd><p>Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.</p></dd>
-<dt><code class="api-field-name">fit_params</code></dt><dd><p>Estimator-specific fit metadata forwarded to the cloned estimator.</p></dd>
+<dt><code class="api-field-name">X</code> <span class="api-field-type">{array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)</span></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
+<dt><code class="api-field-name">y</code> <span class="api-field-type">array-like of shape (n_samples,)</span></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
+<dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">bool or None, default=None</span></dt><dd><p>Reserve an independent calibration split when fitting.</p></dd>
+<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">dict or None, default=None</span></dt><dd><p>Optional train_test_split overrides; requires automatic calibration.</p></dd>
+<dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">array-like of shape (n_samples,) or None, default=None</span></dt><dd><p>Optional finite, nonnegative weights; fitting or evaluation only, never calibration.</p></dd>
+<dt><code class="api-field-name">**fit_params</code> <span class="api-field-type">dict</span></dt><dd><p>Estimator-specific fit metadata forwarded to the cloned estimator.</p></dd>
+</dl>
+
+#### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">self</code> <span class="api-field-type">object</span></dt><dd><p>Fitted predictor; calibrated when automatic calibration is enabled.</p></dd>
+</dl>
+
+#### Raises
+
+<dl class="api-fields">
+<dt><code class="api-field-name">TypeError</code></dt><dd><p>If the estimator cannot be cloned or lacks the required prediction methods.</p></dd>
+<dt><code class="api-field-name">ValueError</code></dt><dd><p>If input shapes, values, weights or configuration are invalid.</p></dd>
 </dl>
 
 </div>
@@ -196,7 +236,7 @@ Get parameters for this estimator.
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">deep</code> <span class="api-field-type">bool, default=True</span></dt><dd><p>If True, will return the parameters for this estimator and contained subobjects that are estimators.</p></dd>
+<dt><code class="api-field-name">deep</code> <span class="api-field-type">bool, default=True, default=True</span></dt><dd><p>If True, will return the parameters for this estimator and contained subobjects that are estimators.</p></dd>
 </dl>
 
 #### Returns
@@ -211,7 +251,7 @@ Get parameters for this estimator.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L216">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L285">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict</span>(
     X,
     alpha=0.05,
     *,
@@ -223,9 +263,23 @@ Return point labels, or (boolean membership sets, probabilities).
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">X</code></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
-<dt><code class="api-field-name">alpha</code></dt><dd><p>Miscoverage probability strictly between zero and one.</p></dd>
-<dt><code class="api-field-name">return_set</code></dt><dd><p>Request conformal output alongside ordinary predictions.</p></dd>
+<dt><code class="api-field-name">X</code> <span class="api-field-type">{array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)</span></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
+<dt><code class="api-field-name">alpha</code> <span class="api-field-type">float, default=0.05</span></dt><dd><p>Miscoverage probability strictly between zero and one.</p></dd>
+<dt><code class="api-field-name">return_set</code> <span class="api-field-type">bool, default=False</span></dt><dd><p>Request conformal output alongside ordinary predictions.</p></dd>
+</dl>
+
+#### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">predictions</code> <span class="api-field-type">ndarray or tuple of ndarray</span></dt><dd><p>Point labels, or (membership, probabilities) when return_set=True.</p></dd>
+</dl>
+
+#### Raises
+
+<dl class="api-fields">
+<dt><code class="api-field-name">ValueError</code></dt><dd><p>If input shapes, values, weights or configuration are invalid.</p></dd>
+<dt><code class="api-field-name">NotFittedError</code></dt><dd><p>If fit has not established a fitted estimator.</p></dd>
+<dt><code class="api-field-name">RuntimeError</code></dt><dd><p>If conformal output is requested before calibration.</p></dd>
 </dl>
 
 </div>
@@ -234,14 +288,28 @@ Return point labels, or (boolean membership sets, probabilities).
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L196">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_p_values</span>(X)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L250">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_p_values</span>(X)</code></pre></div>
 
 Return conservative conformal p-values, including calibration ties.
 
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">X</code></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
+<dt><code class="api-field-name">X</code> <span class="api-field-type">{array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)</span></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
+</dl>
+
+#### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">p_values</code> <span class="api-field-type">ndarray of shape (n_samples, n_classes)</span></dt><dd><p>Conservative conformal p-values in classes_ order, including ties.</p></dd>
+</dl>
+
+#### Raises
+
+<dl class="api-fields">
+<dt><code class="api-field-name">ValueError</code></dt><dd><p>If input shapes, values, weights or configuration are invalid.</p></dd>
+<dt><code class="api-field-name">NotFittedError</code></dt><dd><p>If fit has not established a fitted estimator.</p></dd>
+<dt><code class="api-field-name">RuntimeError</code></dt><dd><p>If conformal output is requested before calibration.</p></dd>
 </dl>
 
 </div>
@@ -250,14 +318,27 @@ Return conservative conformal p-values, including calibration ties.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L161">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_point</span>(X)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L174">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_point</span>(X)</code></pre></div>
 
 Return the wrapped estimator's labels without calibration.
 
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">X</code></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
+<dt><code class="api-field-name">X</code> <span class="api-field-type">{array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)</span></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
+</dl>
+
+#### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">predictions</code> <span class="api-field-type">ndarray of shape (n_samples,)</span></dt><dd><p>Point predictions from the fitted estimator.</p></dd>
+</dl>
+
+#### Raises
+
+<dl class="api-fields">
+<dt><code class="api-field-name">ValueError</code></dt><dd><p>If input shapes, values, weights or configuration are invalid.</p></dd>
+<dt><code class="api-field-name">NotFittedError</code></dt><dd><p>If fit has not established a fitted estimator.</p></dd>
 </dl>
 
 </div>
@@ -266,14 +347,27 @@ Return the wrapped estimator's labels without calibration.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L172">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_proba</span>(X)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L198">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_proba</span>(X)</code></pre></div>
 
 Return validated probabilities in classes_ order.
 
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">X</code></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
+<dt><code class="api-field-name">X</code> <span class="api-field-type">{array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)</span></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
+</dl>
+
+#### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">probabilities</code> <span class="api-field-type">ndarray of shape (n_samples, n_classes)</span></dt><dd><p>Finite class probabilities in fitted classes_ order.</p></dd>
+</dl>
+
+#### Raises
+
+<dl class="api-fields">
+<dt><code class="api-field-name">ValueError</code></dt><dd><p>If input shapes, values, weights or configuration are invalid.</p></dd>
+<dt><code class="api-field-name">NotFittedError</code></dt><dd><p>If fit has not established a fitted estimator.</p></dd>
 </dl>
 
 </div>
@@ -282,15 +376,29 @@ Return validated probabilities in classes_ order.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L182">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_set</span>(X, alpha=0.05)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L221">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_set</span>(X, alpha=0.05)</code></pre></div>
 
 Return a boolean membership matrix of shape (n_samples, n_classes).
 
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">X</code></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
-<dt><code class="api-field-name">alpha</code></dt><dd><p>Miscoverage probability strictly between zero and one.</p></dd>
+<dt><code class="api-field-name">X</code> <span class="api-field-type">{array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)</span></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
+<dt><code class="api-field-name">alpha</code> <span class="api-field-type">float, default=0.05</span></dt><dd><p>Miscoverage probability strictly between zero and one.</p></dd>
+</dl>
+
+#### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">membership</code> <span class="api-field-type">ndarray of bool, shape (n_samples, n_classes)</span></dt><dd><p>Included labels in classes_ order; empty and all-class sets are permitted.</p></dd>
+</dl>
+
+#### Raises
+
+<dl class="api-fields">
+<dt><code class="api-field-name">ValueError</code></dt><dd><p>If input shapes, values, weights or configuration are invalid.</p></dd>
+<dt><code class="api-field-name">NotFittedError</code></dt><dd><p>If fit has not established a fitted estimator.</p></dd>
+<dt><code class="api-field-name">RuntimeError</code></dt><dd><p>If conformal output is requested before calibration.</p></dd>
 </dl>
 
 </div>
@@ -299,7 +407,7 @@ Return a boolean membership matrix of shape (n_samples, n_classes).
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L244">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">score</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L328">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">score</span>(
     X,
     y,
     sample_weight=None,
@@ -310,9 +418,22 @@ Return point accuracy using point predictions.
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">X</code></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
-<dt><code class="api-field-name">y</code></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
-<dt><code class="api-field-name">sample_weight</code></dt><dd><p>Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.</p></dd>
+<dt><code class="api-field-name">X</code> <span class="api-field-type">{array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)</span></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
+<dt><code class="api-field-name">y</code> <span class="api-field-type">array-like of shape (n_samples,)</span></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
+<dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">array-like of shape (n_samples,) or None, default=None</span></dt><dd><p>Optional finite, nonnegative weights; fitting or evaluation only, never calibration.</p></dd>
+</dl>
+
+#### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">score</code> <span class="api-field-type">float</span></dt><dd><p>Point-prediction R² for regression or accuracy for classification.</p></dd>
+</dl>
+
+#### Raises
+
+<dl class="api-fields">
+<dt><code class="api-field-name">ValueError</code></dt><dd><p>If input shapes, values, weights or configuration are invalid.</p></dd>
+<dt><code class="api-field-name">NotFittedError</code></dt><dd><p>If fit has not established a fitted estimator.</p></dd>
 </dl>
 
 </div>
@@ -333,9 +454,9 @@ Request metadata passed to the `fit` method.
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED</span></dt><dd><p>Metadata routing for <code>auto_calibrate</code> parameter in <code>fit</code>.</p></dd>
-<dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED</span></dt><dd><p>Metadata routing for <code>sample_weight</code> parameter in <code>fit</code>.</p></dd>
-<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED</span></dt><dd><p>Metadata routing for <code>tts_kwargs</code> parameter in <code>fit</code>.</p></dd>
+<dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>auto_calibrate</code> parameter in <code>fit</code>.</p></dd>
+<dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>sample_weight</code> parameter in <code>fit</code>.</p></dd>
+<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>tts_kwargs</code> parameter in <code>fit</code>.</p></dd>
 </dl>
 
 #### Returns
@@ -350,14 +471,26 @@ Request metadata passed to the `fit` method.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L129">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L137">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
 
 Set sklearn parameters and invalidate fitted and calibrated state.
 
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">params</code></dt><dd><p>Sklearn parameters, including nested estimator parameters.</p></dd>
+<dt><code class="api-field-name">**params</code> <span class="api-field-type">dict</span></dt><dd><p>Sklearn parameters, including nested estimator parameters.</p></dd>
+</dl>
+
+#### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">self</code> <span class="api-field-type">object</span></dt><dd><p>Predictor with updated parameters and invalidated fitted state.</p></dd>
+</dl>
+
+#### Raises
+
+<dl class="api-fields">
+<dt><code class="api-field-name">ValueError</code></dt><dd><p>If input shapes, values, weights or configuration are invalid.</p></dd>
 </dl>
 
 </div>
@@ -377,8 +510,8 @@ Request metadata passed to the `predict` method.
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">alpha</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED</span></dt><dd><p>Metadata routing for <code>alpha</code> parameter in <code>predict</code>.</p></dd>
-<dt><code class="api-field-name">return_set</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED</span></dt><dd><p>Metadata routing for <code>return_set</code> parameter in <code>predict</code>.</p></dd>
+<dt><code class="api-field-name">alpha</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>alpha</code> parameter in <code>predict</code>.</p></dd>
+<dt><code class="api-field-name">return_set</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>return_set</code> parameter in <code>predict</code>.</p></dd>
 </dl>
 
 #### Returns
@@ -400,7 +533,7 @@ Request metadata passed to the `score` method.
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED</span></dt><dd><p>Metadata routing for <code>sample_weight</code> parameter in <code>score</code>.</p></dd>
+<dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>sample_weight</code> parameter in <code>score</code>.</p></dd>
 </dl>
 
 #### Returns

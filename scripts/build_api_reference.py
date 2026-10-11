@@ -50,7 +50,13 @@ def signature_block(
             keyword_separator = True
         parameters.append(str(param.replace(annotation=inspect.Parameter.empty)))
     label = "class " if is_class else ""
-    prefix = "conformity." if is_class else ""
+    prefix = (
+        "conformity."
+        if is_class
+        or inspect.isfunction(obj)
+        and obj.__module__ == "conformity.metrics"
+        else ""
+    )
     rendered_name = (
         f'<span class="api-keyword">{label}</span>'
         f'<span class="api-module">{prefix}</span>'
@@ -95,6 +101,7 @@ def render_doc(
     *,
     include_summary: bool = True,
     include_examples: bool = False,
+    obj: Callable[..., Any] | None = None,
 ) -> str:
     """Render a short summary and structured reference fields from a docstring."""
     sections = re.split(r"\n([A-Za-z ]+)\n-{3,}\n", inspect.cleandoc(doc))
@@ -117,6 +124,18 @@ def render_doc(
                 term = lines[0]
                 description = " ".join(line.strip() for line in lines[1:])
                 field_name, separator, field_type = term.partition(" : ")
+                if heading == "Parameters" and obj is not None:
+                    parameter = inspect.signature(obj).parameters.get(
+                        field_name.lstrip("*")
+                    )
+                    if (
+                        parameter is not None
+                        and parameter.default is not inspect.Parameter.empty
+                    ):
+                        field_type += (
+                            ", " if field_type else ""
+                        ) + f"default={parameter.default!r}"
+                        separator = True
                 label = f'<code class="api-field-name">{inline(field_name)}</code>'
                 if separator:
                     label += (
@@ -145,8 +164,11 @@ def reference(cls: type) -> str:
         "## Reference\n",
         signature_block(cls, name, is_class=True),
         '<div class="api-class-body" markdown="1">\n',
-        render_doc(inspect.getdoc(cls) or "", 3),
-        render_doc(inspect.getdoc(cls.__init__) or "", 3, include_summary=False),
+        (inspect.getdoc(cls) or "").split("\n\n", 1)[0] + "\n",
+        render_doc(
+            inspect.getdoc(cls.__init__) or "", 3, include_summary=False, obj=cls
+        ),
+        render_doc(inspect.getdoc(cls) or "", 3, include_summary=False),
     ]
     if cls is not conformity.BaseConformalPredictor:
         output.append(
@@ -172,13 +194,15 @@ def reference(cls: type) -> str:
                 f"### {method} {{#{method.replace('_', '-')} .api-method-title}}\n",
                 '<div class="api-method-body" markdown="1">\n',
                 signature_block(obj, method),
-                render_doc(inspect.getdoc(obj) or "", 4),
+                render_doc(inspect.getdoc(obj) or "", 4, obj=obj),
                 "</div>\n",
             ]
         )
     for name, obj in inspect.getmembers(cls):
         if isinstance(obj, property) and not name.startswith("_"):
-            output.extend([f"### {name}\n", render_doc(inspect.getdoc(obj) or "", 4)])
+            output.extend(
+                [f"### {name}\n", render_doc(inspect.getdoc(obj) or "", 4, obj=obj)]
+            )
     output.append("</div>\n")
     return "\n".join(output).strip()
 
@@ -218,7 +242,9 @@ def main() -> None:
             [
                 f"## {name} {{#{name.replace('_', '-')}}}\n",
                 signature_block(obj, name),
-                render_doc(inspect.getdoc(obj) or "", 3, include_examples=True),
+                render_doc(
+                    inspect.getdoc(obj) or "", 3, include_examples=True, obj=obj
+                ),
             ]
         )
     generated = START + "\n" + "\n".join(blocks) + "\n" + END

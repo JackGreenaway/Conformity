@@ -25,6 +25,14 @@ def validate_alpha(alpha: float) -> float:
     ----------
     alpha
         Miscoverage probability strictly between zero and one.
+
+    Raises
+    ------
+    ValueError
+        If input shapes, values, weights or configuration are invalid.
+    NotFittedError
+        If fit has not established a fitted estimator.
+
     """
     if isinstance(alpha, (bool, np.bool_)) or not isinstance(alpha, Real):
         raise ValueError("alpha must be a finite scalar in (0, 1)")
@@ -103,15 +111,15 @@ class BaseConformalPredictor(BaseEstimator, ABC):
 
         Parameters
         ----------
-        estimator
+        estimator : BaseEstimator
             Cloneable sklearn estimator; classifiers also require predict_proba.
-        auto_calibrate
+        auto_calibrate : bool
             Reserve held-out calibration data during fit; defaults to True.
-        tts_kwargs
+        tts_kwargs : dict or None
             Optional train_test_split overrides, applied only with auto_calibrate.
-        calibration_size
+        calibration_size : float or int
             Calibration fraction or sample count; defaults to 0.2.
-        random_state
+        random_state : int, RandomState or None
             Seed or RandomState for reproducible automatic splits.
         """
         self.estimator = estimator
@@ -131,8 +139,19 @@ class BaseConformalPredictor(BaseEstimator, ABC):
 
         Parameters
         ----------
-        params
+        **params : dict
             Sklearn parameters, including nested estimator parameters.
+
+        Returns
+        -------
+        self : object
+            Predictor with updated parameters and invalidated fitted state.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+
         """
         result = super().set_params(**params)
         if params:
@@ -183,18 +202,31 @@ class BaseConformalPredictor(BaseEstimator, ABC):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
-        y
+        y : array-like of shape (n_samples,)
             One target per sample; classification labels follow the fitted classes.
-        auto_calibrate
+        auto_calibrate : bool or None
             Reserve an independent calibration split when fitting.
-        tts_kwargs
+        tts_kwargs : dict or None
             Optional train_test_split overrides; requires automatic calibration.
-        sample_weight
-            Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
-        fit_params
+        sample_weight : array-like of shape (n_samples,) or None
+            Optional finite, nonnegative weights; fitting or evaluation only, never calibration.
+        **fit_params : dict
             Estimator-specific fit metadata forwarded to the cloned estimator.
+
+        Returns
+        -------
+        self : object
+            Fitted predictor; calibrated when automatic calibration is enabled.
+
+        Raises
+        ------
+        TypeError
+            If the estimator cannot be cloned or lacks the required prediction methods.
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+
         """
         # Invalidate before attempting a refit, including when fitting fails.
         self._clear_calibration()
@@ -344,8 +376,21 @@ class BaseConformalPredictor(BaseEstimator, ABC):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
-        y
+        y : array-like of shape (n_samples,)
             One target per sample; classification labels follow the fitted classes.
+
+        Returns
+        -------
+        self : object
+            Predictor with replacement calibration scores.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+
         """

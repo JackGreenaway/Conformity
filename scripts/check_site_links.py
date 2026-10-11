@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from html.parser import HTMLParser
 from pathlib import Path
+import re
 from urllib.parse import unquote, urljoin, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1] / "site"
@@ -66,6 +67,27 @@ def main() -> None:
                 and unquote(target.fragment) not in pages[destination].ids
             ):
                 raise ValueError(f"Missing rendered anchor: {relative}: {link}")
+            checked += 1
+    # CSS can reference fonts or images absent from the HTML link inventory.
+    for path in ROOT.rglob("*.css"):
+        relative = path.relative_to(ROOT).as_posix()
+        for link in re.findall(r"url\(\s*['\"]?([^)'\"\s]+)", path.read_text()):
+            target = urlsplit(urljoin(urljoin(BASE, relative), link))
+            if (
+                target.scheme not in {"http", "https"}
+                or target.netloc != urlsplit(BASE).netloc
+            ):
+                continue
+            if not target.path.startswith("/Conformity/"):
+                raise ValueError(
+                    f"CSS asset escapes repository path: {relative}: {link}"
+                )
+            destination = (ROOT / unquote(target.path[len("/Conformity/") :])).resolve()
+            if (
+                not destination.is_relative_to(ROOT.resolve())
+                or not destination.is_file()
+            ):
+                raise ValueError(f"Missing CSS asset: {relative}: {link}")
             checked += 1
     # Theme and MathJax contract: present on every documentation page.
     for path, page in pages.items():

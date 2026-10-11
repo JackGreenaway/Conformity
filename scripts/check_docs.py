@@ -37,6 +37,16 @@ def check_coverage() -> None:
                 raise ValueError(f"Undocumented export: {name}")
             targets = [obj]
         for target in targets:
+            if not inspect.isclass(target) and target.__module__.startswith(
+                "conformity"
+            ):
+                for section in ("Returns", "Raises"):
+                    if not re.search(
+                        rf"\n{section}\n-{{3,}}\n", inspect.getdoc(target) or ""
+                    ):
+                        raise ValueError(
+                            f"Missing {section} contract: {name}.{target.__name__}"
+                        )
             doc = (
                 inspect.getdoc(target.__init__ if inspect.isclass(target) else target)
                 or ""
@@ -84,6 +94,7 @@ X_new = X_all[1000:1005]
 X_calib, y_calib = X_all[1005:], y_all[1005:]
 pipe = pipeline(StandardScaler(), ConformalRegressor(Ridge(), random_state=42))
 """
+    outputs = {}
     paths = [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]
     with tempfile.TemporaryDirectory(prefix="conformity-docs-") as directory:
         for path in paths:
@@ -219,6 +230,26 @@ pipe = pipeline(StandardScaler(), ConformalRegressor(Ridge(), random_state=42))
                     raise ValueError(
                         f"Example failed in {path}:\n{result.stdout}{result.stderr}"
                     )
+                if path.parent == ROOT / "docs/examples":
+                    download = ROOT / "docs/examples/downloads" / f"{path.stem}.py"
+                    if args.format:
+                        download.parent.mkdir(parents=True, exist_ok=True)
+                        download.write_text(formatted)
+                    elif not download.exists() or download.read_text() != formatted:
+                        raise ValueError(f"Stale downloadable example: {download}")
+                    output_match = re.search(
+                        r"<!-- BEGIN EXAMPLE OUTPUT -->.*?```text\n(.*?)```.*?<!-- END EXAMPLE OUTPUT -->",
+                        content,
+                        re.S,
+                    )
+                    if not args.format and (
+                        output_match is None or output_match[1] != result.stdout
+                    ):
+                        raise ValueError(
+                            f"Displayed output mismatch: {path}; run with --format"
+                        )
+                    if args.format:
+                        outputs[path] = result.stdout
                 count += 1
                 return (
                     match[0]
@@ -227,6 +258,30 @@ pipe = pipeline(StandardScaler(), ConformalRegressor(Ridge(), random_state=42))
                 )
 
             updated = re.sub(r"```python\n(.*?)```", check, content, flags=re.S)
+            if args.format and path in outputs:
+                rendered = (
+                    "<!-- BEGIN EXAMPLE OUTPUT -->\n\n"
+                    f"```text\n{outputs[path]}```\n\n<!-- END EXAMPLE OUTPUT -->"
+                )
+                if "<!-- BEGIN EXAMPLE OUTPUT -->" in updated:
+                    updated = re.sub(
+                        r"<!-- BEGIN EXAMPLE OUTPUT -->.*?<!-- END EXAMPLE OUTPUT -->",
+                        lambda _: rendered,
+                        updated,
+                        flags=re.S,
+                    )
+                else:
+                    updated = (
+                        updated.replace(
+                            "## Results and interpretation",
+                            rendered + "\n\n## Results and interpretation",
+                        )
+                        if "## Results and interpretation" in updated
+                        else updated.replace(
+                            "## Configuration and interpretation",
+                            rendered + "\n\n## Configuration and interpretation",
+                        )
+                    )
             if args.format and updated != content:
                 path.write_text(updated)
     print(f"Verified API coverage and {count} runnable Python examples.")

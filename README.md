@@ -94,14 +94,8 @@ Start with [getting started](docs/getting-started.md), then [examples](docs/exam
 <a id="development"></a>
 <a id="releases"></a>
 
-## Development and releases
+## Development
 
-```bash
-uv python install 3.12
-uv sync --locked --group docs --group release --python 3.12
-bash scripts/validate.sh
-```
-
-CI tests Python 3.9, 3.10, 3.11 and 3.12. Documentation and release tooling use locked dependencies on Python 3.12. See [development and deployment](docs/development.md) for local preview, reference generation, distribution builds, GitHub Pages settings and PyPI trusted publishing.
-
-For a release, update `project.version` and `conformity.__version__` together, refresh `uv.lock`, validate and push the revision, then run **Create GitHub Release**. It rejects existing tags and publishes checked artifacts through the separate PyPI workflow. No release is created by the local build commands above.
+Use the locked checkout environment and run `bash scripts/validate.sh`. See
+[development](docs/development.md) for setup, documentation preview, reference
+regeneration, example validation, tests, linting and local distribution builds.

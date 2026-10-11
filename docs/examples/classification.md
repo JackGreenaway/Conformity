@@ -1,5 +1,7 @@
 # Classification review
 
+[Download the complete Python example](downloads/classification.py). Run it with `python classification.py` in the development environment.
+
 ## Question
 
 Which team should receive a support ticket: billing, technical support or account services? A point classifier must choose just one label. Use a prediction set to expose ambiguity and measure how often the true label remains in that set.
@@ -44,12 +46,30 @@ assert set(model.classes_) == {"billing", "technical", "account"}
 needs_review = mask.sum(axis=1) != 1
 assert needs_review.shape == (225,)
 assert 0 <= coverage <= 1
-print(model.evaluate(X_test, y_test, alpha=0.1))
+for metric, value in model.evaluate(X_test, y_test, alpha=0.1).items():
+    print(f"{metric}: {value:.3f}")
 print("First three candidate teams:", labels[:3])
 print("Tickets needing review:", int(needs_review.sum()))
 ```
 
+<!-- BEGIN EXAMPLE OUTPUT -->
+
+```text
+accuracy: 0.618
+log_loss: 0.907
+coverage: 0.898
+mean_size: 2.164
+empty_rate: 0.000
+singleton_rate: 0.129
+First three candidate teams: [['account', 'technical'], ['account', 'billing'], ['account', 'technical']]
+Tickets needing review: 196
+```
+
+<!-- END EXAMPLE OUTPUT -->
+
 ## Results and interpretation
+
+This run retains the true team for 202 of 225 test tickets (89.8%), while returning about 2.16 candidates per ticket. The review rule flags 196 tickets: coverage alone does not make this classifier efficient enough to automate most routing decisions. A test sample can fall below 90% without contradicting the population marginal guarantee.
 
 `return_set=True` returns **(boolean membership, probabilities)**, not (point labels, sets). Columns follow `classes_`, not the order of the input labels. The printed report includes coverage, mean size, empty rate and singleton rate. A singleton contains one candidate, a larger set exposes ambiguity, and an empty set says no candidate passed the threshold. The illustrative review rule flags both empty and multiple-team sets; a singleton names one candidate team. None is a per-observation confidence probability or a guaranteed error rate for automatically routed tickets.
 

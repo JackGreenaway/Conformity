@@ -5,7 +5,7 @@ Read more in the [User Guide](../user-guide/estimators.md).
 <!-- BEGIN GENERATED REFERENCE -->
 ## Reference
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L36">[source]</a><pre><code><span class="api-keyword">class </span><span class="api-module">conformity.</span><span class="api-name">BaseConformalPredictor</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L44">[source]</a><pre><code><span class="api-keyword">class </span><span class="api-module">conformity.</span><span class="api-name">BaseConformalPredictor</span>(
     estimator,
     *,
     auto_calibrate=True,
@@ -17,6 +17,16 @@ Read more in the [User Guide](../user-guide/estimators.md).
 <div class="api-class-body" markdown="1">
 
 Wrap a cloned estimator with held-out, unweighted split calibration.
+
+### Parameters
+
+<dl class="api-fields">
+<dt><code class="api-field-name">estimator</code> <span class="api-field-type">BaseEstimator</span></dt><dd><p>Cloneable sklearn estimator; classifiers also require predict_proba.</p></dd>
+<dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">bool, default=True</span></dt><dd><p>Reserve held-out calibration data during fit; defaults to True.</p></dd>
+<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">dict or None, default=None</span></dt><dd><p>Optional train_test_split overrides, applied only with auto_calibrate.</p></dd>
+<dt><code class="api-field-name">calibration_size</code> <span class="api-field-type">float or int, default=0.2</span></dt><dd><p>Calibration fraction or sample count; defaults to 0.2.</p></dd>
+<dt><code class="api-field-name">random_state</code> <span class="api-field-type">int, RandomState or None, default=None</span></dt><dd><p>Seed or RandomState for reproducible automatic splits.</p></dd>
+</dl>
 
 ### Attributes
 
@@ -32,16 +42,6 @@ Wrap a cloned estimator with held-out, unweighted split calibration.
 <dt><code class="api-field-name">quantile_level_</code> <span class="api-field-type">float</span></dt><dd><p>Finite-sample rank divided by calibration count; may exceed one.</p></dd>
 <dt><code class="api-field-name">q_level_</code> <span class="api-field-type">float</span></dt><dd><p>Most recent threshold, including infinity when the rank exceeds n.</p></dd>
 <dt><code class="api-field-name">is_calibrated_</code> <span class="api-field-type">bool</span></dt><dd><p>Whether held-out scores exist. Refitting clears calibration state.</p></dd>
-</dl>
-
-### Parameters
-
-<dl class="api-fields">
-<dt><code class="api-field-name">estimator</code></dt><dd><p>Cloneable sklearn estimator; classifiers also require predict_proba.</p></dd>
-<dt><code class="api-field-name">auto_calibrate</code></dt><dd><p>Reserve held-out calibration data during fit; defaults to True.</p></dd>
-<dt><code class="api-field-name">tts_kwargs</code></dt><dd><p>Optional train_test_split overrides, applied only with auto_calibrate.</p></dd>
-<dt><code class="api-field-name">calibration_size</code></dt><dd><p>Calibration fraction or sample count; defaults to 0.2.</p></dd>
-<dt><code class="api-field-name">random_state</code></dt><dd><p>Seed or RandomState for reproducible automatic splits.</p></dd>
 </dl>
 
 ### Examples
@@ -72,15 +72,28 @@ False
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L341">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">calibrate</span>(X, y)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L373">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">calibrate</span>(X, y)</code></pre></div>
 
 Replace calibration scores using data independent of model fitting.
 
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">X</code></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
-<dt><code class="api-field-name">y</code></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
+<dt><code class="api-field-name">X</code> <span class="api-field-type">{array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)</span></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
+<dt><code class="api-field-name">y</code> <span class="api-field-type">array-like of shape (n_samples,)</span></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
+</dl>
+
+#### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">self</code> <span class="api-field-type">object</span></dt><dd><p>Predictor with replacement calibration scores.</p></dd>
+</dl>
+
+#### Raises
+
+<dl class="api-fields">
+<dt><code class="api-field-name">ValueError</code></dt><dd><p>If input shapes, values, weights or configuration are invalid.</p></dd>
+<dt><code class="api-field-name">NotFittedError</code></dt><dd><p>If fit has not established a fitted estimator.</p></dd>
 </dl>
 
 </div>
@@ -89,7 +102,7 @@ Replace calibration scores using data independent of model fitting.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L167">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L186">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
     X,
     y,
     auto_calibrate=None,
@@ -104,12 +117,25 @@ Fit a fresh clone; optionally reserve an independent calibration split.
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">X</code></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
-<dt><code class="api-field-name">y</code></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
-<dt><code class="api-field-name">auto_calibrate</code></dt><dd><p>Reserve an independent calibration split when fitting.</p></dd>
-<dt><code class="api-field-name">tts_kwargs</code></dt><dd><p>Optional train_test_split overrides; requires automatic calibration.</p></dd>
-<dt><code class="api-field-name">sample_weight</code></dt><dd><p>Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.</p></dd>
-<dt><code class="api-field-name">fit_params</code></dt><dd><p>Estimator-specific fit metadata forwarded to the cloned estimator.</p></dd>
+<dt><code class="api-field-name">X</code> <span class="api-field-type">{array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)</span></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
+<dt><code class="api-field-name">y</code> <span class="api-field-type">array-like of shape (n_samples,)</span></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
+<dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">bool or None, default=None</span></dt><dd><p>Reserve an independent calibration split when fitting.</p></dd>
+<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">dict or None, default=None</span></dt><dd><p>Optional train_test_split overrides; requires automatic calibration.</p></dd>
+<dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">array-like of shape (n_samples,) or None, default=None</span></dt><dd><p>Optional finite, nonnegative weights; fitting or evaluation only, never calibration.</p></dd>
+<dt><code class="api-field-name">**fit_params</code> <span class="api-field-type">dict</span></dt><dd><p>Estimator-specific fit metadata forwarded to the cloned estimator.</p></dd>
+</dl>
+
+#### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">self</code> <span class="api-field-type">object</span></dt><dd><p>Fitted predictor; calibrated when automatic calibration is enabled.</p></dd>
+</dl>
+
+#### Raises
+
+<dl class="api-fields">
+<dt><code class="api-field-name">TypeError</code></dt><dd><p>If the estimator cannot be cloned or lacks the required prediction methods.</p></dd>
+<dt><code class="api-field-name">ValueError</code></dt><dd><p>If input shapes, values, weights or configuration are invalid.</p></dd>
 </dl>
 
 </div>
@@ -141,7 +167,7 @@ Get parameters for this estimator.
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">deep</code> <span class="api-field-type">bool, default=True</span></dt><dd><p>If True, will return the parameters for this estimator and contained subobjects that are estimators.</p></dd>
+<dt><code class="api-field-name">deep</code> <span class="api-field-type">bool, default=True, default=True</span></dt><dd><p>If True, will return the parameters for this estimator and contained subobjects that are estimators.</p></dd>
 </dl>
 
 #### Returns
@@ -168,9 +194,9 @@ Request metadata passed to the `fit` method.
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED</span></dt><dd><p>Metadata routing for <code>auto_calibrate</code> parameter in <code>fit</code>.</p></dd>
-<dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED</span></dt><dd><p>Metadata routing for <code>sample_weight</code> parameter in <code>fit</code>.</p></dd>
-<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED</span></dt><dd><p>Metadata routing for <code>tts_kwargs</code> parameter in <code>fit</code>.</p></dd>
+<dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>auto_calibrate</code> parameter in <code>fit</code>.</p></dd>
+<dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>sample_weight</code> parameter in <code>fit</code>.</p></dd>
+<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>tts_kwargs</code> parameter in <code>fit</code>.</p></dd>
 </dl>
 
 #### Returns
@@ -185,14 +211,26 @@ Request metadata passed to the `fit` method.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L129">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L137">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
 
 Set sklearn parameters and invalidate fitted and calibrated state.
 
 #### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">params</code></dt><dd><p>Sklearn parameters, including nested estimator parameters.</p></dd>
+<dt><code class="api-field-name">**params</code> <span class="api-field-type">dict</span></dt><dd><p>Sklearn parameters, including nested estimator parameters.</p></dd>
+</dl>
+
+#### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">self</code> <span class="api-field-type">object</span></dt><dd><p>Predictor with updated parameters and invalidated fitted state.</p></dd>
+</dl>
+
+#### Raises
+
+<dl class="api-fields">
+<dt><code class="api-field-name">ValueError</code></dt><dd><p>If input shapes, values, weights or configuration are invalid.</p></dd>
 </dl>
 
 </div>

@@ -63,10 +63,23 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
-        y
+        y : array-like of shape (n_samples,)
             One target per sample; classification labels follow the fitted classes.
+
+        Returns
+        -------
+        self : object
+            Predictor with replacement calibration scores.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+
         """
         X, y = self._validate_calibration(X, y, numeric=True)
         self._store_scores(np.abs(y - self._point(X)))
@@ -77,8 +90,21 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
+
+        Returns
+        -------
+        predictions : ndarray of shape (n_samples,)
+            Point predictions from the fitted estimator.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+
         """
         return self._point(self._validate_X(X))
 
@@ -87,10 +113,25 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
-        alpha
+        alpha : float
             Miscoverage probability strictly between zero and one.
+
+        Returns
+        -------
+        intervals : ndarray of shape (n_samples, 2)
+            Closed lower and upper bounds; may be outward infinite.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+        RuntimeError
+            If conformal output is requested before calibration.
+
         """
         X = self._validate_X(X)
         threshold = self._threshold(alpha)
@@ -111,12 +152,27 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
-        alpha
+        alpha : float
             Miscoverage probability strictly between zero and one.
-        return_interval
+        return_interval : bool
             Request conformal output alongside ordinary predictions.
+
+        Returns
+        -------
+        predictions : ndarray or tuple of ndarray
+            Point predictions, or (points, intervals) when return_interval=True.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+        RuntimeError
+            If conformal output is requested before calibration.
+
         """
         if not isinstance(return_interval, (bool, np.bool_)):
             raise ValueError("return_interval must be boolean")
@@ -134,12 +190,25 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
-        y
+        y : array-like of shape (n_samples,)
             One target per sample; classification labels follow the fitted classes.
-        sample_weight
-            Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+        sample_weight : array-like of shape (n_samples,) or None
+            Optional finite, nonnegative weights; fitting or evaluation only, never calibration.
+
+        Returns
+        -------
+        score : float
+            Point-prediction R² for regression or accuracy for classification.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+
         """
         return r2_score(y, self.predict_point(X), sample_weight=sample_weight)
 
@@ -151,18 +220,33 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
         *,
         sample_weight: Optional[ArrayLike] = None,
     ) -> dict[str, float]:
-        """Return point accuracy, coverage, mean width, and interval score.
+        """Return point error, coverage, mean width, and interval score.
 
         Parameters
         ----------
-        X
+        X : {array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)
             Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.
-        y
+        y : array-like of shape (n_samples,)
             One target per sample; classification labels follow the fitted classes.
-        alpha
+        alpha : float
             Miscoverage probability strictly between zero and one.
-        sample_weight
-            Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+        sample_weight : array-like of shape (n_samples,) or None
+            Optional finite, nonnegative weights; fitting or evaluation only, never calibration.
+
+        Returns
+        -------
+        report : dict of str to float
+            Keys are r2, mae, mse, coverage, mean_width and interval_score.
+
+        Raises
+        ------
+        ValueError
+            If input shapes, values, weights or configuration are invalid.
+        NotFittedError
+            If fit has not established a fitted estimator.
+        RuntimeError
+            If conformal output is requested before calibration.
+
         """
         from sklearn.metrics import mean_absolute_error, mean_squared_error
 
