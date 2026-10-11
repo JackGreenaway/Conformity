@@ -20,6 +20,33 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
     See BaseConformalPredictor for constructor and splitting options. Infinite
     intervals are required when alpha < 1 / (n_calibration + 1). Coverage is
     marginal under exchangeability, not conditional on each feature value.
+    Examples
+    --------
+    >>> from sklearn.datasets import make_regression
+    >>> from sklearn.linear_model import Ridge
+    >>> from sklearn.model_selection import train_test_split
+    >>> from sklearn.pipeline import make_pipeline
+    >>> from sklearn.preprocessing import StandardScaler
+    >>> from conformity import ConformalRegressor
+    >>> X, y = make_regression(
+    ...     n_samples=120, n_features=3, noise=4, random_state=0
+    ... )
+    >>> X_dev, X_test, y_dev, y_test = train_test_split(
+    ...     X, y, test_size=0.25, random_state=1
+    ... )
+    >>> X_train, X_calib, y_train, y_calib = train_test_split(
+    ...     X_dev, y_dev, test_size=1 / 3, random_state=2
+    ... )
+    >>> model = ConformalRegressor(
+    ...     make_pipeline(StandardScaler(), Ridge()), auto_calibrate=False
+    ... )
+    >>> _ = model.fit(X_train, y_train)
+    >>> _ = model.calibrate(X_calib, y_calib)
+    >>> points, intervals = model.predict(X_test, alpha=0.1, return_interval=True)
+    >>> points.shape, intervals.shape
+    ((30,), (30, 2))
+    >>> model.n_calibration_
+    30
     """
 
     def _point(self, X: FeatureMatrix) -> FloatArray:

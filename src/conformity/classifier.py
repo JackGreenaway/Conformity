@@ -27,6 +27,30 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
     method_ : {"lac", "aps"}
         Score method recorded by successful calibration; changing it requires
         recalibration. Shared fitted attributes are documented on the base class.
+    Examples
+    --------
+    >>> from sklearn.datasets import load_iris
+    >>> from sklearn.linear_model import LogisticRegression
+    >>> from sklearn.model_selection import train_test_split
+    >>> from sklearn.pipeline import make_pipeline
+    >>> from sklearn.preprocessing import StandardScaler
+    >>> from conformity import ConformalClassifier
+    >>> X, y = load_iris(return_X_y=True)
+    >>> X_dev, X_test, y_dev, y_test = train_test_split(
+    ...     X, y, test_size=0.2, random_state=0
+    ... )
+    >>> model = ConformalClassifier(
+    ...     make_pipeline(StandardScaler(), LogisticRegression(max_iter=500)),
+    ...     method="lac", calibration_size=0.25, random_state=1,
+    ... )
+    >>> _ = model.fit(X_dev, y_dev)
+    >>> mask, probabilities = model.predict(X_test, alpha=0.1, return_set=True)
+    >>> mask.shape, probabilities.shape
+    ((30, 3), (30, 3))
+    >>> model.classes_.tolist()
+    [0, 1, 2]
+    >>> mask.dtype.name
+    'bool'
     """
 
     # Score method recorded when calibration succeeds.

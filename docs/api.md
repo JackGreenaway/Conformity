@@ -34,9 +34,25 @@ Fraction of sets containing the true class; supports arbitrary labels.
 <dt><code class="api-field-name">sample_weight</code></dt><dd><p>Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.</p></dd>
 </dl>
 
+### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">result</code> <span class="api-field-type">float</span></dt><dd><p>Fraction of samples whose set contains the true label; weighted when requested.</p></dd>
+</dl>
+
+### Examples
+
+```pycon
+>>> from conformity import prediction_set_coverage
+>>> sets = [[True, False], [False, True], [True, True]]
+>>> prediction_set_coverage(["billing", "account", "billing"], sets,
+...                         classes=["billing", "account"])
+1.0
+```
+
 ## prediction_interval_coverage {#prediction-interval-coverage}
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/metrics.py#L150">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">prediction_interval_coverage</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/metrics.py#L192">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">prediction_interval_coverage</span>(
     y_true,
     prediction_intervals,
     *,
@@ -53,9 +69,23 @@ Fraction of targets contained in closed prediction intervals.
 <dt><code class="api-field-name">sample_weight</code></dt><dd><p>Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.</p></dd>
 </dl>
 
+### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">result</code> <span class="api-field-type">float</span></dt><dd><p>Fraction of targets inside their closed interval; weighted when requested.</p></dd>
+</dl>
+
+### Examples
+
+```pycon
+>>> from conformity import prediction_interval_coverage
+>>> prediction_interval_coverage([1.0, 4.0], [[0.0, 2.0], [1.0, 3.0]])
+0.5
+```
+
 ## prediction_interval_width {#prediction-interval-width}
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/metrics.py#L172">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">prediction_interval_width</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/metrics.py#L224">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">prediction_interval_width</span>(
     prediction_intervals,
     *,
     sample_weight=None,
@@ -70,9 +100,23 @@ Mean interval width; unbounded intervals have infinite width.
 <dt><code class="api-field-name">sample_weight</code></dt><dd><p>Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.</p></dd>
 </dl>
 
+### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">result</code> <span class="api-field-type">float</span></dt><dd><p>Mean upper-minus-lower bound width; may be infinite.</p></dd>
+</dl>
+
+### Examples
+
+```pycon
+>>> from conformity import prediction_interval_width
+>>> prediction_interval_width([[0.0, 2.0], [1.0, 3.0]])
+2.0
+```
+
 ## interval_score {#interval-score}
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/metrics.py#L188">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">interval_score</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/metrics.py#L250">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">interval_score</span>(
     y_true,
     prediction_intervals,
     alpha=0.05,
@@ -91,9 +135,23 @@ Mean Winkler score: width plus 2/alpha times each missed-bound distance.
 <dt><code class="api-field-name">sample_weight</code></dt><dd><p>Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.</p></dd>
 </dl>
 
+### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">result</code> <span class="api-field-type">float</span></dt><dd><p>Mean interval score; may be infinite. Smaller values indicate a better score.</p></dd>
+</dl>
+
+### Examples
+
+```pycon
+>>> from conformity import interval_score
+>>> interval_score([1.0, 4.0], [[0.0, 2.0], [1.0, 3.0]], alpha=0.1)
+12.0
+```
+
 ## prediction_set_size {#prediction-set-size}
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/metrics.py#L105">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">prediction_set_size</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/metrics.py#L117">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">prediction_set_size</span>(
     prediction_set,
     *,
     sample_weight=None,
@@ -108,9 +166,23 @@ Mean cardinality (smaller is more efficient at comparable coverage).
 <dt><code class="api-field-name">sample_weight</code></dt><dd><p>Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.</p></dd>
 </dl>
 
+### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">result</code> <span class="api-field-type">float</span></dt><dd><p>Mean number of included labels per sample; weighted when requested.</p></dd>
+</dl>
+
+### Examples
+
+```pycon
+>>> from conformity import prediction_set_size
+>>> prediction_set_size([[True, False], [False, False], [True, True]])
+1.0
+```
+
 ## prediction_set_empty_rate {#prediction-set-empty-rate}
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/metrics.py#L120">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">prediction_set_empty_rate</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/metrics.py#L142">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">prediction_set_empty_rate</span>(
     prediction_set,
     *,
     sample_weight=None,
@@ -125,9 +197,23 @@ Fraction of empty sets.
 <dt><code class="api-field-name">sample_weight</code></dt><dd><p>Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.</p></dd>
 </dl>
 
+### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">result</code> <span class="api-field-type">float</span></dt><dd><p>Fraction of samples with no included labels; weighted when requested.</p></dd>
+</dl>
+
+### Examples
+
+```pycon
+>>> from conformity import prediction_set_empty_rate
+>>> prediction_set_empty_rate([[True, False], [False, False]])
+0.5
+```
+
 ## prediction_set_singleton_rate {#prediction-set-singleton-rate}
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/metrics.py#L135">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">prediction_set_singleton_rate</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/metrics.py#L167">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">prediction_set_singleton_rate</span>(
     prediction_set,
     *,
     sample_weight=None,
@@ -141,5 +227,19 @@ Fraction of sets containing exactly one label.
 <dt><code class="api-field-name">prediction_set</code></dt><dd><p>Boolean membership matrix in classes order.</p></dd>
 <dt><code class="api-field-name">sample_weight</code></dt><dd><p>Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.</p></dd>
 </dl>
+
+### Returns
+
+<dl class="api-fields">
+<dt><code class="api-field-name">result</code> <span class="api-field-type">float</span></dt><dd><p>Fraction of samples with exactly one included label; weighted when requested.</p></dd>
+</dl>
+
+### Examples
+
+```pycon
+>>> from conformity import prediction_set_singleton_rate
+>>> prediction_set_singleton_rate([[True, False], [True, True]])
+0.5
+```
 
 <!-- END GENERATED REFERENCE -->

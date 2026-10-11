@@ -1,6 +1,7 @@
 """Validate public API coverage, preserved guides and standalone examples."""
 
 import argparse
+import doctest
 import inspect
 import os
 from pathlib import Path
@@ -20,6 +21,8 @@ def check_coverage() -> None:
     api = (ROOT / "docs/api.md").read_text()
     for name in conformity.__all__:
         obj = getattr(conformity, name)
+        if not re.search(r"\nExamples\n-{3,}\n", inspect.getdoc(obj) or ""):
+            raise ValueError(f"Missing API example: {name}")
         if inspect.isclass(obj):
             if name not in CLASSES:
                 raise ValueError(f"Undocumented class: {name}")
@@ -107,6 +110,55 @@ pipe = pipeline(StandardScaler(), ConformalRegressor(Ridge(), random_state=42))
                         )
                     count += len(blocks)
                 continue
+
+            for index, transcript in enumerate(
+                re.findall(r"```pycon\n(.*?)```", content, flags=re.S)
+            ):
+                code = doctest.script_from_examples(transcript)
+                lint = subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "ruff",
+                        "check",
+                        "--select",
+                        "E4,E7,E9,F",
+                        "--stdin-filename",
+                        "example.py",
+                        "-",
+                    ],
+                    input=code,
+                    text=True,
+                    capture_output=True,
+                    cwd=ROOT,
+                )
+                if lint.returncode:
+                    raise ValueError(
+                        f"Invalid API example in {path}:\n{lint.stdout}{lint.stderr}"
+                    )
+                example = Path(directory) / f"api-example-{index}.txt"
+                example.write_text(transcript)
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "doctest",
+                        "-o",
+                        "NORMALIZE_WHITESPACE",
+                        "-o",
+                        "ELLIPSIS",
+                        str(example),
+                    ],
+                    cwd=directory,
+                    text=True,
+                    capture_output=True,
+                    timeout=120,
+                )
+                if result.returncode:
+                    raise ValueError(
+                        f"API output mismatch in {path}:\n{result.stdout}{result.stderr}"
+                    )
+                count += 1
 
             def check(match: re.Match[str]) -> str:
                 nonlocal count

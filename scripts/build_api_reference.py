@@ -89,14 +89,23 @@ def inline(text: str) -> str:
     return re.sub(r"``(.*?)``", r"<code>\1</code>", text)
 
 
-def render_doc(doc: str, level: int, *, include_summary: bool = True) -> str:
+def render_doc(
+    doc: str,
+    level: int,
+    *,
+    include_summary: bool = True,
+    include_examples: bool = False,
+) -> str:
     """Render a short summary and structured reference fields from a docstring."""
     sections = re.split(r"\n([A-Za-z ]+)\n-{3,}\n", inspect.cleandoc(doc))
     # Reference pages contain the short code contract and structured fields.
-    # Extended explanations, examples and rationale belong in the user guide.
+    # Keep API examples concise; broader explanations belong in the user guide.
     summary = sections[0].split("\n\n", 1)[0].replace("``", "`").strip()
     output = [summary + "\n"] if include_summary else []
     for heading, body in zip(sections[1::2], sections[2::2]):
+        if heading == "Examples" and include_examples:
+            output.append(f"{'#' * level} Examples\n\n```pycon\n{body.strip()}\n```\n")
+            continue
         if heading not in {"Parameters", "Attributes", "Returns", "Raises"}:
             continue
         output.append(f"{'#' * level} {heading}\n")
@@ -147,6 +156,12 @@ def reference(cls: type) -> str:
                 include_summary=False,
             )
         )
+    class_doc = inspect.getdoc(cls) or ""
+    examples = re.search(
+        r"\nExamples\n-{3,}\n(.*?)(?=\n[A-Za-z ]+\n-{3,}\n|\Z)", class_doc, re.S
+    )
+    if examples:
+        output.append(f"### Examples\n\n```pycon\n{examples[1].strip()}\n```\n")
     output.append("### Methods\n\n| Method | Purpose |\n| --- | --- |")
     for method, obj in public_methods(cls).items():
         summary = (inspect.getdoc(obj) or "").splitlines()[0]
@@ -203,7 +218,7 @@ def main() -> None:
             [
                 f"## {name} {{#{name.replace('_', '-')}}}\n",
                 signature_block(obj, name),
-                render_doc(inspect.getdoc(obj) or "", 3),
+                render_doc(inspect.getdoc(obj) or "", 3, include_examples=True),
             ]
         )
     generated = START + "\n" + "\n".join(blocks) + "\n" + END

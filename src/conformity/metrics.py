@@ -90,6 +90,18 @@ def prediction_set_coverage(
         Unique class labels in boolean membership-column order.
     sample_weight
         Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    Returns
+    -------
+    result : float
+        Fraction of samples whose set contains the true label; weighted when requested.
+
+    Examples
+    --------
+    >>> from conformity import prediction_set_coverage
+    >>> sets = [[True, False], [False, True], [True, True]]
+    >>> prediction_set_coverage(["billing", "account", "billing"], sets,
+    ...                         classes=["billing", "account"])
+    1.0
     """
     mask = _sets(prediction_set)
     y = _vector(y_true, len(mask), "y_true")
@@ -113,6 +125,16 @@ def prediction_set_size(
         Boolean membership matrix in classes order.
     sample_weight
         Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    Returns
+    -------
+    result : float
+        Mean number of included labels per sample; weighted when requested.
+
+    Examples
+    --------
+    >>> from conformity import prediction_set_size
+    >>> prediction_set_size([[True, False], [False, False], [True, True]])
+    1.0
     """
     return _average(_sets(prediction_set).sum(axis=1), sample_weight)
 
@@ -128,6 +150,16 @@ def prediction_set_empty_rate(
         Boolean membership matrix in classes order.
     sample_weight
         Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    Returns
+    -------
+    result : float
+        Fraction of samples with no included labels; weighted when requested.
+
+    Examples
+    --------
+    >>> from conformity import prediction_set_empty_rate
+    >>> prediction_set_empty_rate([[True, False], [False, False]])
+    0.5
     """
     return _average(_sets(prediction_set).sum(axis=1) == 0, sample_weight)
 
@@ -143,6 +175,16 @@ def prediction_set_singleton_rate(
         Boolean membership matrix in classes order.
     sample_weight
         Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    Returns
+    -------
+    result : float
+        Fraction of samples with exactly one included label; weighted when requested.
+
+    Examples
+    --------
+    >>> from conformity import prediction_set_singleton_rate
+    >>> prediction_set_singleton_rate([[True, False], [True, True]])
+    0.5
     """
     return _average(_sets(prediction_set).sum(axis=1) == 1, sample_weight)
 
@@ -163,6 +205,16 @@ def prediction_interval_coverage(
         Ordered lower/upper bounds of shape (n_samples, 2).
     sample_weight
         Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    Returns
+    -------
+    result : float
+        Fraction of targets inside their closed interval; weighted when requested.
+
+    Examples
+    --------
+    >>> from conformity import prediction_interval_coverage
+    >>> prediction_interval_coverage([1.0, 4.0], [[0.0, 2.0], [1.0, 3.0]])
+    0.5
     """
     intervals = _intervals(prediction_intervals)
     y = _targets(y_true, len(intervals))
@@ -180,6 +232,16 @@ def prediction_interval_width(
         Ordered lower/upper bounds of shape (n_samples, 2).
     sample_weight
         Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    Returns
+    -------
+    result : float
+        Mean upper-minus-lower bound width; may be infinite.
+
+    Examples
+    --------
+    >>> from conformity import prediction_interval_width
+    >>> prediction_interval_width([[0.0, 2.0], [1.0, 3.0]])
+    2.0
     """
     intervals = _intervals(prediction_intervals)
     return _average(intervals[:, 1] - intervals[:, 0], sample_weight)
@@ -207,6 +269,16 @@ def interval_score(
         Miscoverage probability strictly between zero and one.
     sample_weight
         Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
+    Returns
+    -------
+    result : float
+        Mean interval score; may be infinite. Smaller values indicate a better score.
+
+    Examples
+    --------
+    >>> from conformity import interval_score
+    >>> interval_score([1.0, 4.0], [[0.0, 2.0], [1.0, 3.0]], alpha=0.1)
+    12.0
     """
     alpha = validate_alpha(alpha)
     intervals = _intervals(prediction_intervals)

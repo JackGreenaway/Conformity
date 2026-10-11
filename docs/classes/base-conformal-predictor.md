@@ -1,5 +1,7 @@
 # BaseConformalPredictor
 
+Read more in the [User Guide](../user-guide/estimators.md).
+
 <!-- BEGIN GENERATED REFERENCE -->
 ## Reference
 
@@ -42,6 +44,20 @@ Wrap a cloned estimator with held-out, unweighted split calibration.
 <dt><code class="api-field-name">random_state</code></dt><dd><p>Seed or RandomState for reproducible automatic splits.</p></dd>
 </dl>
 
+### Examples
+
+```pycon
+>>> from sklearn.linear_model import Ridge
+>>> from conformity import BaseConformalPredictor, ConformalRegressor
+>>> issubclass(ConformalRegressor, BaseConformalPredictor)
+True
+>>> model = ConformalRegressor(Ridge(), calibration_size=0.25)
+>>> model.get_params()["calibration_size"]
+0.25
+>>> model.is_calibrated_
+False
+```
+
 ### Methods
 
 | Method | Purpose |
@@ -56,7 +72,7 @@ Wrap a cloned estimator with held-out, unweighted split calibration.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L330">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">calibrate</span>(X, y)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L341">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">calibrate</span>(X, y)</code></pre></div>
 
 Replace calibration scores using data independent of model fitting.
 
@@ -73,7 +89,7 @@ Replace calibration scores using data independent of model fitting.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L156">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L167">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
     X,
     y,
     auto_calibrate=None,
@@ -169,7 +185,7 @@ Request metadata passed to the `fit` method.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L118">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L129">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
 
 Set sklearn parameters and invalidate fitted and calibrated state.
 

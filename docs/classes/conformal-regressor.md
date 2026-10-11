@@ -1,5 +1,7 @@
 # ConformalRegressor
 
+Read more in the [User Guide](../user-guide/regression.md).
+
 <!-- BEGIN GENERATED REFERENCE -->
 ## Reference
 
@@ -42,6 +44,36 @@ Symmetric absolute-residual prediction intervals for single-output regression.
 <dt><code class="api-field-name">is_calibrated_</code> <span class="api-field-type">bool</span></dt><dd><p>Whether held-out scores exist. Refitting clears calibration state.</p></dd>
 </dl>
 
+### Examples
+
+```pycon
+>>> from sklearn.datasets import make_regression
+>>> from sklearn.linear_model import Ridge
+>>> from sklearn.model_selection import train_test_split
+>>> from sklearn.pipeline import make_pipeline
+>>> from sklearn.preprocessing import StandardScaler
+>>> from conformity import ConformalRegressor
+>>> X, y = make_regression(
+...     n_samples=120, n_features=3, noise=4, random_state=0
+... )
+>>> X_dev, X_test, y_dev, y_test = train_test_split(
+...     X, y, test_size=0.25, random_state=1
+... )
+>>> X_train, X_calib, y_train, y_calib = train_test_split(
+...     X_dev, y_dev, test_size=1 / 3, random_state=2
+... )
+>>> model = ConformalRegressor(
+...     make_pipeline(StandardScaler(), Ridge()), auto_calibrate=False
+... )
+>>> _ = model.fit(X_train, y_train)
+>>> _ = model.calibrate(X_calib, y_calib)
+>>> points, intervals = model.predict(X_test, alpha=0.1, return_interval=True)
+>>> points.shape, intervals.shape
+((30,), (30, 2))
+>>> model.n_calibration_
+30
+```
+
 ### Methods
 
 | Method | Purpose |
@@ -63,7 +95,7 @@ Symmetric absolute-residual prediction intervals for single-output regression.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L34">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">calibrate</span>(X, y)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L61">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">calibrate</span>(X, y)</code></pre></div>
 
 Replace held-out scores and return this predictor for method chaining.
 
@@ -80,7 +112,7 @@ Replace held-out scores and return this predictor for method chaining.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L119">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">evaluate</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L146">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">evaluate</span>(
     X,
     y,
     alpha=0.05,
@@ -105,7 +137,7 @@ Return point accuracy, coverage, mean width, and interval score.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L156">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L167">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
     X,
     y,
     auto_calibrate=None,
@@ -172,7 +204,7 @@ Get parameters for this estimator.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L73">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L100">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict</span>(
     X,
     alpha=0.05,
     *,
@@ -195,7 +227,7 @@ Return points or (points, intervals).
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L58">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_interval</span>(X, alpha=0.05)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L85">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_interval</span>(X, alpha=0.05)</code></pre></div>
 
 Return [lower, upper] bounds with shape (n_samples, 2).
 
@@ -212,7 +244,7 @@ Return [lower, upper] bounds with shape (n_samples, 2).
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L48">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_point</span>(X)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L75">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_point</span>(X)</code></pre></div>
 
 Return point predictions without requiring calibration.
 
@@ -228,7 +260,7 @@ Return point predictions without requiring calibration.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L103">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">score</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L130">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">score</span>(
     X,
     y,
     sample_weight=None,
@@ -279,7 +311,7 @@ Request metadata passed to the `fit` method.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L118">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L129">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
 
 Set sklearn parameters and invalidate fitted and calibrated state.
 

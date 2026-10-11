@@ -65,6 +65,17 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         Most recent threshold, including infinity when the rank exceeds n.
     is_calibrated_ : bool
         Whether held-out scores exist. Refitting clears calibration state.
+    Examples
+    --------
+    >>> from sklearn.linear_model import Ridge
+    >>> from conformity import BaseConformalPredictor, ConformalRegressor
+    >>> issubclass(ConformalRegressor, BaseConformalPredictor)
+    True
+    >>> model = ConformalRegressor(Ridge(), calibration_size=0.25)
+    >>> model.get_params()["calibration_size"]
+    0.25
+    >>> model.is_calibrated_
+    False
     """
 
     # Attributes exist only after fitting, calibration, or a threshold query.
