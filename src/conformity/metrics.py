@@ -2,7 +2,6 @@
 
 Weights affect evaluation only, not the calibration coverage guarantee.
 Boolean sets use columns in an explicitly supplied ``classes`` order for coverage.
-Legacy label arrays use NaN (or None for object arrays) for exclusions.
 """
 
 from __future__ import annotations
@@ -62,26 +61,14 @@ def _targets(y: ArrayLike, n: int) -> FloatArray:
     return y
 
 
-def _sets(prediction_set: ArrayLike) -> tuple[NDArray[Any], NDArray[np.bool_]]:
-    """Return label values and membership, recognizing NaN and None exclusions."""
+def _sets(prediction_set: ArrayLike) -> NDArray[np.bool_]:
+    """Require a nonempty boolean membership matrix."""
     values = np.asarray(prediction_set)
     if values.ndim != 2 or 0 in values.shape:
         raise ValueError("prediction_set must be a nonempty 2D array")
-    if values.dtype == bool:
-        return values, values
-    if np.issubdtype(values.dtype, np.number):
-        mask = ~np.isnan(values)
-    else:
-        mask = np.fromiter(
-            (
-                v is not None
-                and not (isinstance(v, (float, np.floating)) and np.isnan(v))
-                for v in values.flat
-            ),
-            dtype=bool,
-            count=values.size,
-        ).reshape(values.shape)
-    return values, mask
+    if values.dtype != bool:
+        raise ValueError("prediction_set must be a boolean membership matrix")
+    return values
 
 
 def prediction_set_coverage(
@@ -98,23 +85,20 @@ def prediction_set_coverage(
     y_true
         One observed target or class label per sample.
     prediction_set
-        Boolean membership matrix or legacy labels with NaN/None exclusions.
+        Boolean membership matrix in classes order.
     classes
         Unique class labels in boolean membership-column order.
     sample_weight
         Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
     """
-    values, mask = _sets(prediction_set)
-    y = _vector(y_true, len(values), "y_true")
-    if values.dtype == bool:
-        if classes is None:
-            raise ValueError("classes is required for boolean prediction sets")
-        classes = _vector(classes, values.shape[1], "classes")
-        if len(np.unique(classes)) != len(classes):
-            raise ValueError("classes must be unique")
-        hits = mask & (y[:, None] == classes[None, :])
-    else:
-        hits = mask & (values == y[:, None])
+    mask = _sets(prediction_set)
+    y = _vector(y_true, len(mask), "y_true")
+    if classes is None:
+        raise ValueError("classes is required for boolean prediction sets")
+    classes = _vector(classes, mask.shape[1], "classes")
+    if len(np.unique(classes)) != len(classes):
+        raise ValueError("classes must be unique")
+    hits = mask & (y[:, None] == classes[None, :])
     return _average(hits.any(axis=1), sample_weight)
 
 
@@ -126,11 +110,11 @@ def prediction_set_size(
     Parameters
     ----------
     prediction_set
-        Boolean membership matrix or legacy labels with NaN/None exclusions.
+        Boolean membership matrix in classes order.
     sample_weight
         Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
     """
-    return _average(_sets(prediction_set)[1].sum(axis=1), sample_weight)
+    return _average(_sets(prediction_set).sum(axis=1), sample_weight)
 
 
 def prediction_set_empty_rate(
@@ -141,11 +125,11 @@ def prediction_set_empty_rate(
     Parameters
     ----------
     prediction_set
-        Boolean membership matrix or legacy labels with NaN/None exclusions.
+        Boolean membership matrix in classes order.
     sample_weight
         Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
     """
-    return _average(_sets(prediction_set)[1].sum(axis=1) == 0, sample_weight)
+    return _average(_sets(prediction_set).sum(axis=1) == 0, sample_weight)
 
 
 def prediction_set_singleton_rate(
@@ -156,34 +140,11 @@ def prediction_set_singleton_rate(
     Parameters
     ----------
     prediction_set
-        Boolean membership matrix or legacy labels with NaN/None exclusions.
+        Boolean membership matrix in classes order.
     sample_weight
         Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
     """
-    return _average(_sets(prediction_set)[1].sum(axis=1) == 1, sample_weight)
-
-
-def prediction_set_efficiency(
-    prediction_set: ArrayLike, *, sample_weight: Optional[ArrayLike] = None
-) -> float:
-    """Legacy (size - 1) / (number of classes - 1) diagnostic.
-
-        Empty sets can yield negative values. For a single class, return mean size
-        rather than divide by zero. Prefer prediction_set_size for interpretation.
-
-    Parameters
-    ----------
-    prediction_set
-        Boolean membership matrix or legacy labels with NaN/None exclusions.
-    sample_weight
-        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
-    """
-    values, mask = _sets(prediction_set)
-    size = mask.sum(axis=1)
-    return _average(
-        size if values.shape[1] == 1 else (size - 1) / (values.shape[1] - 1),
-        sample_weight,
-    )
+    return _average(_sets(prediction_set).sum(axis=1) == 1, sample_weight)
 
 
 def prediction_interval_coverage(
@@ -222,80 +183,6 @@ def prediction_interval_width(
     """
     intervals = _intervals(prediction_intervals)
     return _average(intervals[:, 1] - intervals[:, 0], sample_weight)
-
-
-def prediction_interval_efficiency(
-    point_prediction: ArrayLike,
-    prediction_intervals: ArrayLike,
-    relative: bool = False,
-    *,
-    sample_weight: Optional[ArrayLike] = None,
-) -> float:
-    """Mean width, optionally divided by abs(point_prediction) + 1e-10.
-
-    Parameters
-    ----------
-    point_prediction
-        One finite point prediction per sample.
-    prediction_intervals
-        Ordered lower/upper bounds of shape (n_samples, 2).
-    relative
-        Divide widths by the absolute point prediction plus 1e-10.
-    sample_weight
-        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
-    """
-    intervals = _intervals(prediction_intervals)
-    point = _targets(point_prediction, len(intervals))
-    width = intervals[:, 1] - intervals[:, 0]
-    return _average(
-        width / (np.abs(point) + 1e-10) if relative else width, sample_weight
-    )
-
-
-def prediction_interval_ratio(
-    point_predictions: ArrayLike,
-    prediction_intervals: ArrayLike,
-    *,
-    sample_weight: Optional[ArrayLike] = None,
-) -> float:
-    """Mean upper bound / point prediction; undefined for zero predictions.
-
-    Parameters
-    ----------
-    point_predictions
-        One finite, nonzero point prediction per sample.
-    prediction_intervals
-        Ordered lower/upper bounds of shape (n_samples, 2).
-    sample_weight
-        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
-    """
-    intervals = _intervals(prediction_intervals)
-    point = _targets(point_predictions, len(intervals))
-    if (point == 0).any():
-        raise ValueError("interval ratio is undefined for zero point predictions")
-    return _average(intervals[:, 1] / point, sample_weight)
-
-
-def prediction_interval_mse(
-    y_true: ArrayLike,
-    prediction_intervals: ArrayLike,
-    *,
-    sample_weight: Optional[ArrayLike] = None,
-) -> tuple[float, float]:
-    """MSE of each bound; infinite bounds give infinite MSE.
-
-    Parameters
-    ----------
-    y_true
-        One observed target or class label per sample.
-    prediction_intervals
-        Ordered lower/upper bounds of shape (n_samples, 2).
-    sample_weight
-        Optional finite, nonnegative evaluation or fitting weights; calibration is unweighted.
-    """
-    intervals = _intervals(prediction_intervals)
-    y = _targets(y_true, len(intervals))
-    return tuple(_average((intervals[:, i] - y) ** 2, sample_weight) for i in range(2))
 
 
 def interval_score(

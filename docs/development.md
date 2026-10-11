@@ -1,0 +1,72 @@
+# Development and deployment
+
+## Build from a checkout
+
+The package supports Python 3.9 and newer; CI explicitly tests 3.9, 3.10, 3.11 and 3.12. Documentation and release tooling use Python 3.12. Use the committed lockfile so checks and builds use the same dependencies:
+
+```bash
+uv python install 3.12
+uv sync --locked --group docs --group release --python 3.12
+uv run --locked --group docs --group release --python 3.12 pytest --doctest-modules src tests
+uv run --locked --group docs --group release --python 3.12 ruff check src/conformity tests
+uv run --locked --group docs --group release --python 3.12 python scripts/build_api_reference.py
+uv run --locked --group docs --group release --python 3.12 python scripts/check_docs.py
+uv run --locked --group docs --group release --python 3.12 mkdocs build --strict
+uv run --locked --group docs --group release --python 3.12 python scripts/check_site_links.py
+uv run --locked --group docs --group release --python 3.12 mkdocs serve
+```
+
+`bash scripts/validate.sh` runs all release gates without publishing. It explicitly selects Python 3.12 in every uv run; set `TASK_PYTHON_VERSION` only when intentionally validating another supported tooling interpreter.
+
+Pandas is a development dependency so DataFrame compatibility checks run rather than being skipped. Matplotlib executes the plotting example with a noninteractive backend. These are not required runtime dependencies. After changing dependency declarations or package version, run `uv lock`, then sync with `--locked`.
+
+## Maintain the documentation
+
+The theme, CSS, custom navigation, dark default and light-mode toggle follow the directly inspected `polars-learn` checkout (reference commit `f8dc9bf`). All local URLs use MkDocs URL filters and relative Markdown paths. The canonical repository prefix is `/Conformity/`, including its capital C.
+
+Edit source docstrings for signatures, parameters, fitted attributes and method behavior; then regenerate references. The generator replaces only marked regions, preserving authored guidance around them. `--check` rejects stale references. `check_docs.py` checks public export, parameter, fitted attribute and public method coverage, lints Python examples, and executes each block in an isolated subprocess and temporary working directory.
+
+Format new examples with `python scripts/check_docs.py --format` through the locked uv command above. Existing guides are preserved in `docs/legacy/`: their contextual examples execute as a complete page with a seeded synthetic-data fixture, without reformatting. Keep `DOCUMENTATION.md` and `THEORY.md` copies synchronized if you edit their originals. The original README is preserved in `docs/legacy/README.md`; the root README is now the concise entry point.
+
+`mkdocs build --strict` checks Markdown navigation and link anchors. `check_site_links.py` checks generated HTML links, anchors and local assets using the repository Pages URL, including the custom template. It checks local rendered targets; it does not contact external websites. Mathematical notation uses Arithmatex and MathJax. The MathJax runtime is pinned to 3.2.2 on jsDelivr; rendering mathematics needs access to that CDN.
+
+## Build distributions locally
+
+Choose a fresh empty output directory to avoid mixing versions. The release group locks build, Hatchling and Twine. Hatchling is constrained to >=1.26,<1.28 because later releases can emit metadata 2.5 that the locked Twine cannot validate; disabling build isolation makes the builder use that locked environment. Both wheel and source archive are produced, and the wheel is built from the source archive:
+
+```bash
+uv sync --locked --group docs --group release --python 3.12
+uv run --locked --group docs --group release --python 3.12 python -m build --no-isolation --outdir /tmp/conformity-release-dist
+uv run --locked --group docs --group release --python 3.12 python -m twine check --strict /tmp/conformity-release-dist/*
+uv run --locked --group docs --group release --python 3.12 python scripts/check_release.py --tag v0.1.7 --dist /tmp/conformity-release-dist
+```
+
+The final command checks project.version, explicit `conformity.__version__`, the supplied tag, archive metadata, embedded versions, distribution name and Python support. The workflow creates distributions in a fresh runner temporary directory; local `dist/` files are never published.
+
+## GitHub Pages setup
+
+In this repository's **Settings → Pages**, select **GitHub Actions** as the build source. Allow Actions to run and the `github-pages` environment to deploy from `main`; configure any desired environment protection rules. The Documentation workflow checks pull requests and deploys only successful non-PR builds on `main`, using `pages: write` and `id-token: write` in the isolated deployment job.
+
+The site will be available at `https://jackgreenaway.github.io/Conformity/` after the first successful deployment. If the repository name or default branch changes, update `site_url`, the rendered-link checker and workflow branch guards together. No deployment has been performed as part of these local changes.
+
+## PyPI trusted publishing setup
+
+Create the GitHub environment **`pypi`** and set its protection rules. On the **`conformity-calib`** PyPI project, configure a trusted publisher for:
+
+| Setting | Value |
+| --- | --- |
+| Owner | `JackGreenaway` |
+| Repository | `Conformity` |
+| Workflow filename | `python-publish.yml` |
+| Environment | `pypi` |
+
+The publisher uses OIDC in a separate job with `id-token: write`, downloads only validated artifacts and does not use an API-token secret. Configure these settings before invoking a release. Install both release and reusable publishing workflows on the default branch.
+
+## Release procedure
+
+1. Set `project.version` and `src/conformity/__init__.py`'s `__version__` to the same new `X.Y.Z`; update `uv.lock` and regenerate references if implementation changed.
+2. Run the local validation and distribution checks above. Commit and push the intended revision.
+3. Run **Create GitHub Release** from Actions on the intended revision. It runs the supported Python test matrix, rejects existing version tags, validates documentation and builds/checks fresh distributions before creating `vX.Y.Z` and attaching artifacts.
+4. Its explicit reusable-workflow call publishes those same artifacts through the `pypi` environment. This handoff works when `GITHUB_TOKEN` suppresses release-triggered workflows. Manually published stable GitHub releases also validate the tagged source and build/check fresh distributions before publishing.
+
+If publishing fails after release creation, fix the setup and rerun the failed publishing jobs while artifacts remain available. Do not try to create the same tag again. PyPI versions cannot be overwritten; use a new version for changed artifacts. Prerelease tags and versions are outside these stable `X.Y.Z` workflows.

@@ -42,7 +42,9 @@ from conformity._typing import FeatureMatrix, FloatArray
 
 def regressor() -> ConformalRegressor:
     """Build a fitted constant regressor for calibration contract tests."""
-    reg = ConformalRegressor(DummyRegressor(strategy="constant", constant=0))
+    reg = ConformalRegressor(
+        DummyRegressor(strategy="constant", constant=0), auto_calibrate=False
+    )
     reg.fit(np.zeros((10, 1)), np.zeros(10))
     return reg
 
@@ -69,7 +71,7 @@ def classifier(
     labels: tuple[Union[str, int], ...] = ("cat", "dog"),
 ) -> ConformalClassifier:
     """Build a fitted classifier with deterministic input probabilities."""
-    clf = ConformalClassifier(FixedClassifier(), method=method)
+    clf = ConformalClassifier(FixedClassifier(), method=method, auto_calibrate=False)
     clf.fit([[0.8, 0.2], [0.2, 0.8]], labels)
     return clf
 
@@ -119,7 +121,7 @@ def test_refitting_invalidates_calibration_and_parameter_changes_invalidate_fit(
     reg = regressor().calibrate(np.zeros((10, 1)), np.arange(10))
     reg.fit([[0], [1]], [0, 1])
     assert not reg.is_calibrated_
-    assert not hasattr(reg, "n_calib")
+    assert not hasattr(reg, "n_calibration_")
     with pytest.raises(RuntimeError, match="calibrated"):
         reg.predict_interval([[0]])
     reg.set_params(estimator__constant=1)
@@ -152,8 +154,8 @@ def test_arbitrary_labels_ties_and_p_values(
     assert prediction_set_size(mask) == 1
     assert prediction_set_empty_rate(mask) == 0
     assert prediction_set_singleton_rate(mask) == 1
-    legacy, proba = clf.predict(X, alpha=0.2)
-    assert prediction_set_coverage(list(labels), legacy) == 1
+    sets, proba = clf.predict(X, alpha=0.2, return_set=True)
+    assert prediction_set_coverage(list(labels), sets, classes=clf.classes_) == 1
     assert proba.shape == (2, 2)
 
 
@@ -205,7 +207,9 @@ def test_sparse_auto_calibration_and_original_estimator_untouched() -> None:
     X = sparse.csr_matrix(np.arange(120, dtype=float).reshape(40, 3))
     y = np.arange(40, dtype=float)
     estimator = LinearRegression()
-    reg = ConformalRegressor(estimator, random_state=7, calibration_size=0.25)
+    reg = ConformalRegressor(
+        estimator, random_state=7, calibration_size=0.25, auto_calibrate=False
+    )
     reg.fit(X, y, auto_calibrate=True, sample_weight=np.ones(40))
     assert reg.n_calibration_ == 10
     assert not hasattr(estimator, "coef_")
@@ -223,7 +227,8 @@ def test_reproducible_split_and_training_weight_alignment() -> None:
     y = np.sin(X[:, 0])
     weight = np.arange(1, 101)
     objects = [
-        ConformalRegressor(LinearRegression(), random_state=42) for _ in range(2)
+        ConformalRegressor(LinearRegression(), random_state=42, auto_calibrate=False)
+        for _ in range(2)
     ]
     for obj in objects:
         obj.fit(X, y, auto_calibrate=True, sample_weight=weight)
@@ -242,7 +247,7 @@ def test_sklearn_scoring_and_grid_search() -> None:
     X = np.arange(100, dtype=float).reshape(-1, 1)
     y = X[:, 0] * 2
     reg = ConformalRegressor(
-        make_pipeline(StandardScaler(), LinearRegression()), prediction_mode="point"
+        make_pipeline(StandardScaler(), LinearRegression()), auto_calibrate=False
     )
     assert is_regressor(reg)
     assert np.all(cross_val_score(reg, X, y, scoring="neg_mean_squared_error") > -1e-20)
@@ -251,7 +256,7 @@ def test_sklearn_scoring_and_grid_search() -> None:
     )
     search.fit(X, y)
     assert search.best_score_ == pytest.approx(1)
-    clf = ConformalClassifier(LogisticRegression(), prediction_mode="point")
+    clf = ConformalClassifier(LogisticRegression(), auto_calibrate=False)
     assert is_classifier(clf)
     labels = np.tile(["cat", "dog"], 50)
     assert np.isfinite(cross_val_score(clf, X, labels, scoring="neg_log_loss")).all()
@@ -260,8 +265,8 @@ def test_sklearn_scoring_and_grid_search() -> None:
 @pytest.mark.parametrize(
     "obj",
     [
-        ConformalRegressor(LinearRegression(), prediction_mode="point"),
-        ConformalClassifier(LogisticRegression(), prediction_mode="point"),
+        ConformalRegressor(LinearRegression(), auto_calibrate=False),
+        ConformalClassifier(LogisticRegression(), auto_calibrate=False),
     ],
 )
 def test_sklearn_estimator_contract(obj: BaseConformalPredictor) -> None:
@@ -340,27 +345,30 @@ def test_dataframe_column_selecting_pipeline() -> tuple[
     pipeline = make_pipeline(
         ColumnTransformer([("a", StandardScaler(), ["a"])]), LinearRegression()
     )
-    reg = ConformalRegressor(pipeline, random_state=0).fit(X, y, auto_calibrate=True)
+    reg = ConformalRegressor(pipeline, random_state=0, auto_calibrate=False).fit(
+        X, y, auto_calibrate=True
+    )
     assert reg.predict_interval(X.iloc[:2], alpha=0.2).shape == (2, 2)
     with pytest.raises(ValueError, match="feature names"):
         reg.predict_point(X[["b", "a"]])
 
 
-def test_large_integer_legacy_labels_keep_precision() -> None:
-    """Verify large integer legacy labels keep precision."""
+def test_large_integer_labels_keep_precision() -> None:
+    """Verify large integer labels keep precision."""
     labels = (2**60 + 1, 2**60 + 2)
     clf = classifier(labels=labels).calibrate([[0.8, 0.2]] * 9, [labels[0]] * 9)
-    sets, _ = clf.predict([[0.8, 0.2], [0.2, 0.8]], alpha=0.2)
-    assert sets[0, 0] == labels[0]
-    assert sets[1, 1] == labels[1]
-    assert prediction_set_coverage(labels, sets) == 1
+    sets, _ = clf.predict([[0.8, 0.2], [0.2, 0.8]], alpha=0.2, return_set=True)
+    np.testing.assert_array_equal(sets, [[True, False], [False, True]])
+    assert prediction_set_coverage(labels, sets, classes=clf.classes_) == 1
 
 
 def test_single_class_evaluation() -> None:
     """Verify single class evaluation."""
     from sklearn.dummy import DummyClassifier
 
-    clf = ConformalClassifier(DummyClassifier()).fit([[0]] * 10, ["only"] * 10)
+    clf = ConformalClassifier(DummyClassifier(), auto_calibrate=False).fit(
+        [[0]] * 10, ["only"] * 10
+    )
     clf.calibrate([[1]] * 19, ["only"] * 19)
     report = clf.evaluate([[2]], ["only"], alpha=0.2)
     assert report["log_loss"] == 0

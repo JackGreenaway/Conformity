@@ -1,0 +1,57 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install 3.12
+      - name: Install locked documentation dependencies
+        run: uv sync --locked --group docs --python 3.12
+      - name: Check generated references and API coverage
+        run: uv run --locked --group docs --python 3.12 python scripts/build_api_reference.py --check
+      - name: Validate runnable examples and documentation coverage
+        run: uv run --locked --group docs --python 3.12 python scripts/check_docs.py
+      - name: Check documentation tooling
+        run: |
+          uv run --locked --group docs --python 3.12 ruff check --select E4,E7,E9,F scripts
+          uv run --locked --group docs --python 3.12 ruff format --check scripts
+      - name: Build strictly and check rendered links
+        run: |
+          uv run --locked --group docs --python 3.12 mkdocs build --strict
+          uv run --locked --group docs --python 3.12 python scripts/check_site_links.py
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Deploy documentation
+        id: deployment
+        uses: actions/deploy-pages@v4

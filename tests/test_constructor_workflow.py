@@ -58,7 +58,7 @@ def test_outer_pipeline_predictions_use_fitted_preprocessing() -> None:
     """Verify outer pipeline predictions use fitted preprocessing."""
     X, y = make_regression(n_samples=100, random_state=0)
     pipe = make_pipeline(
-        StandardScaler(), ConformalRegressor(Ridge(), prediction_mode="point")
+        StandardScaler(), ConformalRegressor(Ridge(), auto_calibrate=False)
     )
     pipe.fit(X[:70], y[:70])
     pipe[-1].calibrate(pipe[:-1].transform(X[70:]), y[70:])
@@ -104,14 +104,14 @@ def test_outer_classifier_pipeline_and_prediction_override() -> None:
     X, y = make_classification(n_samples=100, random_state=0)
     pipe = make_pipeline(
         StandardScaler(),
-        ConformalClassifier(LogisticRegression(max_iter=500), prediction_mode="point"),
+        ConformalClassifier(LogisticRegression(max_iter=500), auto_calibrate=False),
     )
     pipe.fit(X[:70], y[:70])
     pipe[-1].calibrate(pipe[:-1].transform(X[70:]), y[70:])
     labels = pipe.predict(X[:5])
     sets, probabilities = pipe.predict(X[:5], return_set=True, alpha=0.1)
     mask = pipe[-1].predict_set(pipe[:-1].transform(X[:5]), alpha=0.1)
-    np.testing.assert_array_equal(~np.isnan(sets), mask)
+    np.testing.assert_array_equal(sets, mask)
     np.testing.assert_allclose(probabilities, pipe.predict_proba(X[:5]))
     np.testing.assert_array_equal(labels, pipe.predict(X[:5], return_set=False))
     with pytest.raises(ValueError, match="return_set"):
@@ -140,16 +140,12 @@ def test_cross_validate_final_wrapper_auto_calibrates_each_fold(
     if classification:
         X, y = make_classification(n_samples=120, random_state=0)
         inner = make_pipeline(StandardScaler(), LogisticRegression(max_iter=500))
-        control = ConformalClassifier(
-            inner, auto_calibrate=True, prediction_mode="point", random_state=7
-        )
+        control = ConformalClassifier(inner, auto_calibrate=True, random_state=7)
         scoring = "accuracy"
     else:
         X, y = make_regression(n_samples=120, noise=10, random_state=0)
         inner = make_pipeline(StandardScaler(), Ridge())
-        control = ConformalRegressor(
-            inner, auto_calibrate=True, prediction_mode="point", random_state=7
-        )
+        control = ConformalRegressor(inner, auto_calibrate=True, random_state=7)
         scoring = "neg_mean_absolute_error"
     pipe = Pipeline([("conformal", control)])
 
@@ -202,15 +198,12 @@ def test_cross_validate_with_preprocessing_before_final_wrapper(
         control = ConformalClassifier(
             LogisticRegression(max_iter=500),
             auto_calibrate=True,
-            prediction_mode="point",
             random_state=7,
         )
         scoring = "accuracy"
     else:
         X, y = make_regression(n_samples=120, noise=10, random_state=0)
-        control = ConformalRegressor(
-            Ridge(), auto_calibrate=True, prediction_mode="point", random_state=7
-        )
+        control = ConformalRegressor(Ridge(), auto_calibrate=True, random_state=7)
         scoring = "neg_mean_absolute_error"
     pipe = make_pipeline(StandardScaler(), control)
     result = cross_validate(
@@ -233,3 +226,20 @@ def test_cross_validate_with_preprocessing_before_final_wrapper(
             points, bounds = fitted.predict(X[:5], return_interval=True, alpha=0.1)
             assert points.shape == (5,)
             assert bounds.shape == (5, 2)
+
+
+@pytest.mark.parametrize("classification", [False, True])
+def test_default_workflow(classification: bool) -> None:
+    """Ordinary fit calibrates and predict returns sklearn predictions by default."""
+    if classification:
+        X, y = make_classification(n_samples=100, random_state=0)
+        model = ConformalClassifier(LogisticRegression(max_iter=500), random_state=0)
+    else:
+        X, y = make_regression(n_samples=100, random_state=0)
+        model = ConformalRegressor(Ridge(), random_state=0)
+    model.fit(X, y)
+    assert model.n_calibration_ == 20
+    assert model.predict(X[:5]).shape == (5,)
+    assert not hasattr(model, "n_calib")
+    assert not hasattr(model, "calibration_non_conformity")
+    assert "prediction_mode" not in model.get_params()

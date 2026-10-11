@@ -25,7 +25,9 @@ def test_all_possible_future_ranks_obey_coverage_bound(
     scores = np.array(scores)
     hits = []
     for future in range(len(scores)):
-        model = ConformalRegressor(DummyRegressor(strategy="constant", constant=0))
+        model = ConformalRegressor(
+            DummyRegressor(strategy="constant", constant=0), auto_calibrate=False
+        )
         model.fit([[0], [1]], [0, 0])
         calibration = np.delete(scores, future)
         model.calibrate(np.zeros((len(calibration), 1)), calibration)

@@ -44,7 +44,7 @@ class TestBaseEstimatorCompliance:
     ) -> None:
         """Test get_params method."""
         estimator = LinearRegression()
-        reg = ConformalRegressor(estimator=estimator)
+        reg = ConformalRegressor(estimator=estimator, auto_calibrate=False)
 
         params = reg.get_params()
         assert "estimator" in params
@@ -55,7 +55,7 @@ class TestBaseEstimatorCompliance:
         regression_data: tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]],
     ) -> None:
         """Test set_params method."""
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
 
         new_estimator = LinearRegression()
         reg.set_params(estimator=new_estimator)
@@ -64,19 +64,19 @@ class TestBaseEstimatorCompliance:
 
     def test_set_params_returns_self(self) -> None:
         """Test that set_params returns self."""
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         result = reg.set_params(estimator=LinearRegression())
         assert result is reg
 
     def test_classifier_get_params(self) -> None:
         """Test get_params for ConformalClassifier."""
-        clf = ConformalClassifier(LogisticRegression())
+        clf = ConformalClassifier(LogisticRegression(), auto_calibrate=False)
         params = clf.get_params()
         assert "estimator" in params
 
     def test_classifier_set_params(self) -> None:
         """Test set_params for ConformalClassifier."""
-        clf = ConformalClassifier(LogisticRegression())
+        clf = ConformalClassifier(LogisticRegression(), auto_calibrate=False)
         result = clf.set_params(estimator=LogisticRegression(max_iter=500))
         assert result is clf
 
@@ -86,7 +86,7 @@ class TestClone:
 
     def test_clone_regressor(self) -> None:
         """Test cloning ConformalRegressor."""
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg_cloned = clone(reg)
 
         assert isinstance(reg_cloned, ConformalRegressor)
@@ -95,7 +95,7 @@ class TestClone:
 
     def test_clone_classifier(self) -> None:
         """Test cloning ConformalClassifier."""
-        clf = ConformalClassifier(LogisticRegression())
+        clf = ConformalClassifier(LogisticRegression(), auto_calibrate=False)
         clf_cloned = clone(clf)
 
         assert isinstance(clf_cloned, ConformalClassifier)
@@ -109,7 +109,7 @@ class TestClone:
         """Test cloning a fitted regressor doesn't preserve fitted state."""
         X_train, X_test, y_train, y_test = regression_data
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(X_train[:100], y_train[:100])
 
         reg_cloned = clone(reg)
@@ -130,7 +130,10 @@ class TestPipelineCompatibility:
         pipe = Pipeline(
             [
                 ("scaler", StandardScaler()),
-                ("regressor", ConformalRegressor(LinearRegression())),
+                (
+                    "regressor",
+                    ConformalRegressor(LinearRegression(), auto_calibrate=False),
+                ),
             ]
         )
 
@@ -149,7 +152,12 @@ class TestPipelineCompatibility:
         pipe = Pipeline(
             [
                 ("scaler", StandardScaler()),
-                ("classifier", ConformalClassifier(LogisticRegression(max_iter=1000))),
+                (
+                    "classifier",
+                    ConformalClassifier(
+                        LogisticRegression(max_iter=1000), auto_calibrate=False
+                    ),
+                ),
             ]
         )
 
@@ -163,12 +171,12 @@ class TestPipelineCompatibility:
         """Test prediction through pipeline (regressor)."""
         X_train, X_test, y_train, y_test = regression_data
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(X_train[:100], y_train[:100])
         reg.calibrate(X_train[100:150], y_train[100:150])
 
         # Predict through regressor
-        y_pred, intervals = reg.predict(X_test)
+        y_pred, intervals = reg.predict(X_test, return_interval=True)
         assert y_pred.shape[0] == X_test.shape[0]
 
     def test_pipeline_predict_classifier(
@@ -180,12 +188,14 @@ class TestPipelineCompatibility:
         """Test prediction through pipeline (classifier)."""
         X_train, X_test, y_train, y_test = classification_data
 
-        clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+        clf = ConformalClassifier(
+            LogisticRegression(max_iter=1000), auto_calibrate=False
+        )
         clf.fit(X_train[:100], y_train[:100])
         clf.calibrate(X_train[100:150], y_train[100:150])
 
         # Predict through classifier
-        pred_set, y_proba = clf.predict(X_test)
+        pred_set, y_proba = clf.predict(X_test, return_set=True)
         assert pred_set.shape[0] == X_test.shape[0]
 
 
@@ -194,7 +204,7 @@ class TestInputValidation:
 
     def test_fit_validates_input(self) -> None:
         """Test that fit validates input shapes."""
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
 
         with pytest.raises(ValueError):
             X = np.array([[1, 2], [3, 4]])
@@ -208,7 +218,7 @@ class TestInputValidation:
         """Test that calibrate validates input."""
         X_train, X_test, y_train, y_test = regression_data
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(X_train[:100], y_train[:100])
 
         with pytest.raises(ValueError):
@@ -221,10 +231,10 @@ class TestInputValidation:
         """Test that predict validates input."""
         X_train, X_test, y_train, y_test = regression_data
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         # Should raise NotFittedError or RuntimeError when not fitted
         with pytest.raises((RuntimeError, Exception)):
-            reg.predict(X_test)  # Not fitted
+            reg.predict(X_test, return_interval=True)  # Not fitted
 
     def test_predict_rejects_uncalibrated(
         self,
@@ -233,11 +243,11 @@ class TestInputValidation:
         """Test that predict rejects uncalibrated estimator."""
         X_train, X_test, y_train, y_test = regression_data
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(X_train[:100], y_train[:100])
 
         with pytest.raises(RuntimeError):
-            reg.predict(X_test)  # Not calibrated
+            reg.predict(X_test, return_interval=True)  # Not calibrated
 
 
 class TestRegressorMixin:
@@ -245,14 +255,14 @@ class TestRegressorMixin:
 
     def test_conformal_regressor_has_estimator_type(self) -> None:
         """Test that sklearn identifies ConformalRegressor as a regressor."""
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         assert is_regressor(reg)
 
     def test_conformal_regressor_is_regressor_mixin(self) -> None:
         """Test that ConformalRegressor inherits from RegressorMixin."""
         from sklearn.base import RegressorMixin
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         assert isinstance(reg, RegressorMixin)
 
 
@@ -261,14 +271,14 @@ class TestClassifierMixin:
 
     def test_conformal_classifier_has_estimator_type(self) -> None:
         """Test that sklearn identifies ConformalClassifier as a classifier."""
-        clf = ConformalClassifier(LogisticRegression())
+        clf = ConformalClassifier(LogisticRegression(), auto_calibrate=False)
         assert is_classifier(clf)
 
     def test_conformal_classifier_is_classifier_mixin(self) -> None:
         """Test that ConformalClassifier inherits from ClassifierMixin."""
         from sklearn.base import ClassifierMixin
 
-        clf = ConformalClassifier(LogisticRegression())
+        clf = ConformalClassifier(LogisticRegression(), auto_calibrate=False)
         assert isinstance(clf, ClassifierMixin)
 
 
@@ -282,11 +292,11 @@ class TestAutoCalibrationEdgeCases:
         """Test auto_calibrate with default 80/20 split."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(X, y, auto_calibrate=True)
 
         assert reg.is_calibrated_
-        assert hasattr(reg, "calibration_non_conformity")
+        assert hasattr(reg, "calibration_scores_")
 
     def test_auto_calibrate_with_custom_split(
         self,
@@ -295,7 +305,7 @@ class TestAutoCalibrationEdgeCases:
         """Test auto_calibrate with custom test_size."""
         X, y = make_regression(n_samples=200, n_features=5, random_state=42)
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(
             X, y, auto_calibrate=True, tts_kwargs={"test_size": 0.5, "random_state": 42}
         )
@@ -306,7 +316,9 @@ class TestAutoCalibrationEdgeCases:
         """Test auto_calibrate for classifier."""
         X, y = make_classification(n_samples=200, n_features=5, random_state=42)
 
-        clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+        clf = ConformalClassifier(
+            LogisticRegression(max_iter=1000), auto_calibrate=False
+        )
         clf.fit(X, y, auto_calibrate=True)
 
         assert clf.is_calibrated_
@@ -322,7 +334,7 @@ class TestParameterPropagation:
         """Test that fit returns self."""
         X_train, X_test, y_train, y_test = regression_data
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         result = reg.fit(X_train[:100], y_train[:100])
 
         assert result is reg
@@ -334,7 +346,7 @@ class TestParameterPropagation:
         """Test that calibrate returns self."""
         X_train, X_test, y_train, y_test = regression_data
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(X_train[:100], y_train[:100])
         result = reg.calibrate(X_train[100:150], y_train[100:150])
 
@@ -347,7 +359,7 @@ class TestParameterPropagation:
         """Test method chaining."""
         X_train, X_test, y_train, y_test = regression_data
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         result = reg.fit(X_train[:100], y_train[:100]).calibrate(
             X_train[100:150], y_train[100:150]
         )

@@ -73,12 +73,7 @@ class ConcreteConformalPredictor(BaseConformalPredictor):
         if X.shape[0] != y.shape[0]:
             raise ValueError("X and y must have the same number of samples")
 
-        if self.is_calibrated_:
-            warnings.warn("Predictor is already calibrated. Recalibrating...")
-
-        self.calibration_non_conformity = self._compute_non_conformity_scores(X, y)
-        self.n_calib = X.shape[0]
-        self.is_calibrated_ = True
+        self._store_scores(self._compute_non_conformity_scores(X, y))
 
         return self
 
@@ -119,9 +114,9 @@ def test_base_calibrate(
     predictor.calibrate(X_test, y_test)
 
     assert predictor.is_calibrated_
-    assert hasattr(predictor, "calibration_non_conformity")
-    assert hasattr(predictor, "n_calib")
-    assert predictor.n_calib == X_test.shape[0]
+    assert hasattr(predictor, "calibration_scores_")
+    assert hasattr(predictor, "n_calibration_")
+    assert predictor.n_calibration_ == X_test.shape[0]
 
 
 def test_base_predict_without_calibration_raises(
@@ -234,9 +229,9 @@ def test_base_non_conformity_scores_computed(
     predictor.fit(X_train, y_train)
     predictor.calibrate(X_test, y_test)
 
-    assert hasattr(predictor, "calibration_non_conformity")
-    assert len(predictor.calibration_non_conformity) == X_test.shape[0]
-    assert all(x >= 0 for x in predictor.calibration_non_conformity)
+    assert hasattr(predictor, "calibration_scores_")
+    assert len(predictor.calibration_scores_) == X_test.shape[0]
+    assert all(x >= 0 for x in predictor.calibration_scores_)
 
 
 def test_base_estimator_is_stored(
@@ -306,7 +301,7 @@ def test_base_calibration_n_calib_matches(
 
     predictor.calibrate(X_calib, y_calib)
 
-    assert predictor.n_calib == 50
+    assert predictor.n_calibration_ == 50
 
 
 def test_base_different_estimators(
@@ -387,4 +382,4 @@ def test_base_single_sample_calibration(
     predictor.calibrate(X_calib, y_calib)
 
     assert predictor.is_calibrated_
-    assert predictor.n_calib == 1
+    assert predictor.n_calibration_ == 1

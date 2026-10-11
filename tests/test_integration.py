@@ -35,11 +35,11 @@ class TestMultipleEstimators:
             Lasso(),
             RandomForestRegressor(n_estimators=10, random_state=42),
         ]:
-            reg = ConformalRegressor(estimator)
+            reg = ConformalRegressor(estimator, auto_calibrate=False)
             reg.fit(X_train, y_train)
             reg.calibrate(X_calib, y_calib)
 
-            y_pred, intervals = reg.predict(X_test, alpha=0.1)
+            y_pred, intervals = reg.predict(X_test, alpha=0.1, return_interval=True)
 
             assert y_pred.shape[0] == X_test.shape[0]
             assert intervals.shape == (X_test.shape[0], 2)
@@ -59,11 +59,11 @@ class TestMultipleEstimators:
             LogisticRegression(max_iter=1000, random_state=42),
             RandomForestClassifier(n_estimators=10, random_state=42),
         ]:
-            clf = ConformalClassifier(estimator)
+            clf = ConformalClassifier(estimator, auto_calibrate=False)
             clf.fit(X_train, y_train)
             clf.calibrate(X_calib, y_calib)
 
-            pred_set, _ = clf.predict(X_test, alpha=0.1)
+            pred_set, _ = clf.predict(X_test, alpha=0.1, return_set=True)
 
             assert pred_set.shape[0] == X_test.shape[0]
 
@@ -81,7 +81,7 @@ class TestCoverageLevels:
             X_rest, y_rest, test_size=0.5, random_state=42
         )
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(X_train, y_train)
         reg.calibrate(X_calib, y_calib)
 
@@ -89,7 +89,7 @@ class TestCoverageLevels:
         coverages = []
 
         for alpha in alphas:
-            _, intervals = reg.predict(X_test, alpha=alpha)
+            _, intervals = reg.predict(X_test, alpha=alpha, return_interval=True)
             coverage = prediction_interval_coverage(y_test, intervals)
             coverages.append(coverage)
 
@@ -109,7 +109,9 @@ class TestCoverageLevels:
             X_rest, y_rest, test_size=0.5, random_state=42
         )
 
-        clf = ConformalClassifier(LogisticRegression(max_iter=1000, random_state=42))
+        clf = ConformalClassifier(
+            LogisticRegression(max_iter=1000, random_state=42), auto_calibrate=False
+        )
         clf.fit(X_train, y_train)
         clf.calibrate(X_calib, y_calib)
 
@@ -117,8 +119,8 @@ class TestCoverageLevels:
         coverages = []
 
         for alpha in alphas:
-            pred_set, _ = clf.predict(X_test, alpha=alpha)
-            coverage = prediction_set_coverage(y_test, pred_set)
+            pred_set, _ = clf.predict(X_test, alpha=alpha, return_set=True)
+            coverage = prediction_set_coverage(y_test, pred_set, classes=clf.classes_)
             coverages.append(coverage)
 
         assert all(c >= 0 for c in coverages)
@@ -138,11 +140,11 @@ class TestBoundaryConditions:
             X_rest, y_rest, test_size=0.9, random_state=42
         )
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(X_train, y_train)
         reg.calibrate(X_calib, y_calib)
 
-        y_pred, intervals = reg.predict(X_test)
+        y_pred, intervals = reg.predict(X_test, return_interval=True)
         assert intervals.shape[0] == X_test.shape[0]
 
     def test_large_alpha(self) -> None:
@@ -155,7 +157,7 @@ class TestBoundaryConditions:
             X_rest, y_rest, test_size=0.5, random_state=42
         )
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(X_train, y_train)
         reg.calibrate(X_calib, y_calib)
 
@@ -164,7 +166,7 @@ class TestBoundaryConditions:
 
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
-            y_pred, intervals = reg.predict(X_test, alpha=0.95)
+            y_pred, intervals = reg.predict(X_test, alpha=0.95, return_interval=True)
             # May or may not warn depending on calibration size, just check it works
             assert intervals.shape[0] == X_test.shape[0]
             assert np.all(intervals[:, 0] <= intervals[:, 1])
@@ -179,11 +181,11 @@ class TestBoundaryConditions:
             X_rest, y_rest, test_size=0.5, random_state=42
         )
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(X_train, y_train)
         reg.calibrate(X_calib, y_calib)
 
-        y_pred, intervals = reg.predict(X_test, alpha=0.001)
+        y_pred, intervals = reg.predict(X_test, alpha=0.001, return_interval=True)
 
         # Should still return valid intervals
         assert intervals.shape[0] == X_test.shape[0]
@@ -198,21 +200,21 @@ class TestBoundaryConditions:
             X_rest, y_rest, test_size=0.5, random_state=42
         )
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(X_train, y_train)
         reg.calibrate(X_calib, y_calib)
 
         with pytest.raises(ValueError):
-            reg.predict(X_test, alpha=1.0)
+            reg.predict(X_test, alpha=1.0, return_interval=True)
 
         with pytest.raises(ValueError):
-            reg.predict(X_test, alpha=1.1)
+            reg.predict(X_test, alpha=1.1, return_interval=True)
 
         with pytest.raises(ValueError):
-            reg.predict(X_test, alpha=0.0)
+            reg.predict(X_test, alpha=0.0, return_interval=True)
 
         with pytest.raises(ValueError):
-            reg.predict(X_test, alpha=-0.1)
+            reg.predict(X_test, alpha=-0.1, return_interval=True)
 
 
 class TestDataTypeHandling:
@@ -233,11 +235,11 @@ class TestDataTypeHandling:
             X_calib_typed = X_calib.astype(dtype)
             X_test_typed = X_test.astype(dtype)
 
-            reg = ConformalRegressor(LinearRegression())
+            reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
             reg.fit(X_train_typed, y_train)
             reg.calibrate(X_calib_typed, y_calib)
 
-            y_pred, intervals = reg.predict(X_test_typed)
+            y_pred, intervals = reg.predict(X_test_typed, return_interval=True)
             assert y_pred.shape[0] == X_test.shape[0]
 
     def test_1d_target_conversion(self) -> None:
@@ -254,11 +256,11 @@ class TestDataTypeHandling:
         assert y_train.ndim == 1
         assert y_calib.ndim == 1
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(X_train, y_train)
         reg.calibrate(X_calib, y_calib)
 
-        y_pred, intervals = reg.predict(X_test)
+        y_pred, intervals = reg.predict(X_test, return_interval=True)
         assert y_pred.shape[0] == X_test.shape[0]
 
 
@@ -275,15 +277,15 @@ class TestConsistency:
             X_rest, y_rest, test_size=0.5, random_state=42
         )
 
-        reg1 = ConformalRegressor(LinearRegression())
+        reg1 = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg1.fit(X_train, y_train)
         reg1.calibrate(X_calib, y_calib)
-        pred1, int1 = reg1.predict(X_test, alpha=0.1)
+        pred1, int1 = reg1.predict(X_test, alpha=0.1, return_interval=True)
 
-        reg2 = ConformalRegressor(LinearRegression())
+        reg2 = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg2.fit(X_train, y_train)
         reg2.calibrate(X_calib, y_calib)
-        pred2, int2 = reg2.predict(X_test, alpha=0.1)
+        pred2, int2 = reg2.predict(X_test, alpha=0.1, return_interval=True)
 
         np.testing.assert_array_almost_equal(pred1, pred2)
         np.testing.assert_array_almost_equal(int1, int2)
@@ -298,13 +300,13 @@ class TestConsistency:
             X_rest, y_rest, test_size=0.5, random_state=42
         )
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(X_train, y_train)
         reg.calibrate(X_calib, y_calib)
 
-        pred1, int1 = reg.predict(X_test, alpha=0.1)
-        pred2, int2 = reg.predict(X_test, alpha=0.1)
-        pred3, int3 = reg.predict(X_test, alpha=0.1)
+        pred1, int1 = reg.predict(X_test, alpha=0.1, return_interval=True)
+        pred2, int2 = reg.predict(X_test, alpha=0.1, return_interval=True)
+        pred3, int3 = reg.predict(X_test, alpha=0.1, return_interval=True)
 
         np.testing.assert_array_equal(pred1, pred2)
         np.testing.assert_array_equal(pred2, pred3)
@@ -324,7 +326,7 @@ class TestWarnings:
         X_calib1, X_calib2 = train_test_split(X_rest, test_size=0.5, random_state=42)
         y_calib1, y_calib2 = train_test_split(y_rest, test_size=0.5, random_state=42)
 
-        reg = ConformalRegressor(LinearRegression())
+        reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(X_train, y_train)
         reg.calibrate(X_calib1, y_calib1)
 

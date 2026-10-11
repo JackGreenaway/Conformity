@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+<meta name="theme-color" content="#f89939">
+{% endblock %}
+
+{% block site_nav %}
+<ul class="nav navbar-nav docs-topnav">
+  {% for title, target in [('Getting started', 'getting-started.md'), ('User guide', 'user-guide/estimators.md'), ('API', 'api.md'), ('Examples', 'examples/index.md')] %}
+  {% for entry in nav.pages if entry.file.src_uri == target %}
+  <li class="nav-item"><a class="nav-link{% if entry.active %} active{% endif %}" href="{{ entry.url|url }}"{% if entry.active %} aria-current="page"{% endif %}>{{ title }}</a></li>
+  {% endfor %}
+  {% endfor %}
+</ul>
+{% endblock %}
+
+{% block next_prev %}{% endblock %}
+{% block repo %}
+<li class="nav-item"><a class="nav-link" href="{{ config.repo_url }}" aria-label="View Conformity on GitHub"><i class="fa-brands fa-github" aria-hidden="true"></i> GitHub</a></li>
+{% endblock %}
+
+{% block content %}
+<a class="docs-skip" href="#main-content">Skip to content</a>
+<aside class="docs-navigation" aria-label="Documentation navigation">
+  <details class="docs-nav-panel" open>
+    <summary>Documentation</summary>
+    {% macro navigation(items) %}
+    <ul>
+      {% for item in items %}
+      <li>
+        {% if item.children %}
+        <span class="docs-nav-group">{{ item.title }}</span>
+        {{ navigation(item.children) }}
+        {% else %}
+        <a href="{{ item.url|url }}"{% if item.active %} class="current" aria-current="page"{% endif %}>{{ item.title }}</a>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endmacro %}
+    <nav>{{ navigation(nav) }}</nav>
+  </details>
+</aside>
+<main class="docs-content" id="main-content" tabindex="-1">
+  {% if not page.is_homepage %}<div class="docs-breadcrumb"><a href="{{ nav.homepage.url|url }}">Conformity</a><span aria-hidden="true"> / </span>{{ page.title }}</div>{% endif %}
+  {% include "content.html" %}
+  <nav class="docs-pagination" aria-label="Adjacent pages">
+    {% if page.previous_page %}<a rel="prev" href="{{ page.previous_page.url|url }}">← {{ page.previous_page.title }}</a>{% endif %}
+    {% if page.next_page %}<a rel="next" href="{{ page.next_page.url|url }}">{{ page.next_page.title }} →</a>{% endif %}
+  </nav>
+</main>
+<aside class="docs-toc" aria-label="On this page">
+  <p class="docs-toc-title">On this page</p>
+  {% include "toc.html" %}
+  {% if page.edit_url %}<a class="docs-edit" href="{{ page.edit_url }}">Edit this page</a>{% endif %}
+</aside>
+{% endblock %}

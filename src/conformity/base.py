@@ -5,7 +5,7 @@ from __future__ import annotations
 import warnings
 from abc import ABC, abstractmethod
 from numbers import Real
-from typing import Any, Literal, Optional, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -36,21 +36,35 @@ def validate_alpha(alpha: float) -> float:
 class BaseConformalPredictor(BaseEstimator, ABC):
     """Wrap a cloned estimator with held-out, unweighted split calibration.
 
-    ``prediction_mode='conformal'`` preserves the original tuple-returning API.
-    Use ``'point'`` for sklearn scorers, model selection and ensemble tools.
+    Predictions follow the sklearn point-prediction contract.
     ``calibration_size`` and ``random_state`` control automatic splitting.
     Put learned preprocessing inside the wrapped estimator's Pipeline so that
     calibration observations are excluded from all fitting steps.
 
-    Fitted attributes
-    -----------------
-    estimator_ is the fitted clone; n_features_in_ and optional feature_names_in_
-    describe its inputs. Classifiers additionally expose classes_. Calibration
-    creates immutable calibration_scores_ and sorted_calibration_scores_, with
-    n_calibration_ observations. calibration_non_conformity and n_calib retain
-    the legacy aliases. Threshold queries record alpha_used_, quantile_level_
-    (the finite-sample rank divided by sample count), and q_level_ (the threshold).
-    These attributes are removed when their fitted or calibrated state expires.
+    Attributes
+    ----------
+    estimator_ : BaseEstimator
+        Fitted clone; created by fit and removed by parameter changes.
+    n_features_in_ : int
+        Number of validated fitting features.
+    feature_names_in_ : ndarray
+        Input names, present when fitting named string columns.
+    classes_ : ndarray
+        Classifier labels in probability and membership-column order.
+    calibration_scores_ : ndarray
+        Immutable held-out scores; created by successful calibration.
+    sorted_calibration_scores_ : ndarray
+        Immutable sorted scores cached for rank queries.
+    n_calibration_ : int
+        Number of held-out calibration observations.
+    alpha_used_ : float
+        Miscoverage probability from the most recent threshold query.
+    quantile_level_ : float
+        Finite-sample rank divided by calibration count; may exceed one.
+    q_level_ : float
+        Most recent threshold, including infinity when the rank exceeds n.
+    is_calibrated_ : bool
+        Whether held-out scores exist. Refitting clears calibration state.
     """
 
     # Attributes exist only after fitting, calibration, or a threshold query.
@@ -60,9 +74,7 @@ class BaseConformalPredictor(BaseEstimator, ABC):
     feature_names_in_: NDArray[Any]
     calibration_scores_: NDArray[np.float64]
     sorted_calibration_scores_: NDArray[np.float64]
-    calibration_non_conformity: NDArray[np.float64]
     n_calibration_: int
-    n_calib: int
     alpha_used_: float
     q_level_: float
     quantile_level_: float
@@ -71,11 +83,10 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         self,
         estimator: BaseEstimator,
         *,
-        auto_calibrate: bool = False,
+        auto_calibrate: bool = True,
         tts_kwargs: Optional[dict[str, Any]] = None,
         calibration_size: Union[float, int] = 0.2,
         random_state: Optional[Union[int, np.random.RandomState]] = None,
-        prediction_mode: Literal["conformal", "point"] = "conformal",
     ) -> None:
         """Configure the wrapped estimator and held-out calibration workflow.
 
@@ -84,22 +95,19 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         estimator
             Cloneable sklearn estimator; classifiers also require predict_proba.
         auto_calibrate
-            Reserve held-out calibration data during fit; defaults to False.
+            Reserve held-out calibration data during fit; defaults to True.
         tts_kwargs
             Optional train_test_split overrides, applied only with auto_calibrate.
         calibration_size
             Calibration fraction or sample count; defaults to 0.2.
         random_state
             Seed or RandomState for reproducible automatic splits.
-        prediction_mode
-            Return a conformal tuple by default, or point predictions in point mode.
         """
         self.estimator = estimator
         self.auto_calibrate = auto_calibrate
         self.tts_kwargs = tts_kwargs
         self.calibration_size = calibration_size
         self.random_state = random_state
-        self.prediction_mode = prediction_mode
 
     def __sklearn_tags__(self) -> Tags:
         """Advertise sparse input support to sklearn validation and tooling."""
@@ -133,22 +141,11 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         """Report whether calibration scores are available."""
         return hasattr(self, "calibration_scores_")
 
-    @is_calibrated_.setter
-    def is_calibrated_(self, value: bool) -> None:
-        """Reset calibration or import scores from the legacy subclass protocol."""
-        # Compatibility for subclasses using the original calibration protocol.
-        if not value:
-            self._clear_calibration()
-        elif not hasattr(self, "calibration_scores_"):
-            self.calibration_scores_ = np.asarray(self.calibration_non_conformity)
-
     def _clear_calibration(self) -> None:
         """Remove cached scores, sample counts, and threshold diagnostics."""
         for name in (
             "calibration_scores_",
             "sorted_calibration_scores_",
-            "calibration_non_conformity",
-            "n_calib",
             "n_calibration_",
             "alpha_used_",
             "q_level_",
@@ -192,8 +189,6 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         self._clear_calibration()
         for name in ("estimator_", "classes_", "feature_names_in_", "n_features_in_"):
             self.__dict__.pop(name, None)
-        if self.prediction_mode not in ("conformal", "point"):
-            raise ValueError("prediction_mode must be 'conformal' or 'point'")
         if auto_calibrate is None:
             auto_calibrate = self.auto_calibrate
         if tts_kwargs is None:
@@ -309,8 +304,7 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         self.calibration_scores_.flags.writeable = False
         self.sorted_calibration_scores_ = np.sort(scores)
         self.sorted_calibration_scores_.flags.writeable = False
-        self.calibration_non_conformity = self.calibration_scores_
-        self.n_calibration_ = self.n_calib = len(scores)
+        self.n_calibration_ = len(scores)
 
     def _threshold(self, alpha: float) -> float:
         """Select the finite-sample order statistic, allowing an infinite threshold."""

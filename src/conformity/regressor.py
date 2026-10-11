@@ -75,11 +75,11 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
         X: FeatureMatrix,
         alpha: float = 0.05,
         *,
-        return_interval: Optional[bool] = None,
+        return_interval: bool = False,
     ) -> Union[FloatArray, tuple[FloatArray, FloatArray]]:
         """Return points or (points, intervals).
 
-                ``return_interval`` overrides prediction_mode for this call and can be
+                ``return_interval=True`` requests intervals and can be
                 passed through a sklearn Pipeline with metadata routing disabled.
 
         Parameters
@@ -89,15 +89,11 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
         alpha
             Miscoverage probability strictly between zero and one.
         return_interval
-            Override the default output mode for this prediction call.
+            Request conformal output alongside ordinary predictions.
         """
-        if return_interval is not None and not isinstance(
-            return_interval, (bool, np.bool_)
-        ):
-            raise ValueError("return_interval must be boolean or None")
-        if return_interval is False or (
-            return_interval is None and self.prediction_mode == "point"
-        ):
+        if not isinstance(return_interval, (bool, np.bool_)):
+            raise ValueError("return_interval must be boolean")
+        if not return_interval:
             return self.predict_point(X)
         X = self._validate_X(X)
         threshold = self._threshold(alpha)
@@ -107,7 +103,7 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
     def score(
         self, X: FeatureMatrix, y: ArrayLike, sample_weight: Optional[ArrayLike] = None
     ) -> float:
-        """Return point-prediction R², regardless of prediction_mode.
+        """Return point-prediction R², using point predictions.
 
         Parameters
         ----------

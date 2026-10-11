@@ -21,6 +21,12 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
     descending probability through the candidate class. Ties use stable class
     order. ``predict_set`` returns a boolean matrix in ``classes_`` order, which
     works with any sklearn class labels. Empty prediction sets are permitted.
+
+    Attributes
+    ----------
+    method_ : {"lac", "aps"}
+        Score method recorded by successful calibration; changing it requires
+        recalibration. Shared fitted attributes are documented on the base class.
     """
 
     # Score method recorded when calibration succeeds.
@@ -31,11 +37,10 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
         estimator: BaseEstimator,
         *,
         method: Literal["lac", "aps"] = "lac",
-        auto_calibrate: bool = False,
+        auto_calibrate: bool = True,
         tts_kwargs: Optional[dict[str, Any]] = None,
         calibration_size: Union[float, int] = 0.2,
         random_state: Optional[Union[int, np.random.RandomState]] = None,
-        prediction_mode: Literal["conformal", "point"] = "conformal",
     ) -> None:
         """Configure the wrapped estimator and held-out calibration workflow.
 
@@ -46,15 +51,13 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
         method
             Use lac (1 - probability) or aps (cumulative ranked probability).
         auto_calibrate
-            Reserve held-out calibration data during fit; defaults to False.
+            Reserve held-out calibration data during fit; defaults to True.
         tts_kwargs
             Optional train_test_split overrides, applied only with auto_calibrate.
         calibration_size
             Calibration fraction or sample count; defaults to 0.2.
         random_state
             Seed or RandomState for reproducible automatic splits.
-        prediction_mode
-            Return a conformal tuple by default, or point predictions in point mode.
         """
         super().__init__(
             estimator,
@@ -62,7 +65,6 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
             tts_kwargs=tts_kwargs,
             calibration_size=calibration_size,
             random_state=random_state,
-            prediction_mode=prediction_mode,
         )
         self.method = method
 
@@ -192,14 +194,9 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
         X: FeatureMatrix,
         alpha: float = 0.05,
         *,
-        return_set: Optional[bool] = None,
+        return_set: bool = False,
     ) -> Union[NDArray[Any], tuple[NDArray[Any], FloatArray]]:
-        """Return (label sets with NaN exclusions, probabilities), or point labels.
-
-                ``return_set=True`` forces the conformal tuple; ``False`` forces labels.
-                This keyword can be forwarded by an outer sklearn Pipeline with
-                metadata routing disabled. Numeric classes retain a numeric legacy array; string classes use an
-                object array. Prefer predict_set for a dtype-independent representation.
+        """Return point labels, or (boolean membership sets, probabilities).
 
         Parameters
         ----------
@@ -208,31 +205,22 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
         alpha
             Miscoverage probability strictly between zero and one.
         return_set
-            Override the default output mode for this prediction call.
+            Request conformal output alongside ordinary predictions.
         """
-        if return_set is not None and not isinstance(return_set, (bool, np.bool_)):
-            raise ValueError("return_set must be boolean or None")
-        if return_set is False or (
-            return_set is None and self.prediction_mode == "point"
-        ):
+        if not isinstance(return_set, (bool, np.bool_)):
+            raise ValueError("return_set must be boolean")
+        if not return_set:
             return self.predict_point(X)
         X = self._validate_X(X)
         threshold = self._calibrated_threshold(alpha)
         proba = self._probabilities(X)
         mask = self._candidate_scores(proba) <= threshold
-        dtype = float if np.issubdtype(self.classes_.dtype, np.number) else object
-        if np.issubdtype(self.classes_.dtype, np.integer) and any(
-            abs(int(label)) > 2**53 for label in self.classes_
-        ):
-            dtype = object  # float NaN sentinels must not round large integer labels
-        labels = np.full(mask.shape, np.nan, dtype=dtype)
-        labels[mask] = np.broadcast_to(self.classes_, mask.shape)[mask]
-        return labels, proba
+        return mask, proba
 
     def score(
         self, X: FeatureMatrix, y: ArrayLike, sample_weight: Optional[ArrayLike] = None
     ) -> float:
-        """Return point accuracy regardless of prediction_mode.
+        """Return point accuracy using point predictions.
 
         Parameters
         ----------

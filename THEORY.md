@@ -17,7 +17,6 @@ pipe = Pipeline([
     ("scaler", StandardScaler()),
     ("conformal", ConformalRegressor(
         Ridge(),
-        prediction_mode="point",
         auto_calibrate=True,
         random_state=42,
     )),
@@ -86,7 +85,7 @@ For the true label these are super-uniform under the same assumptions: `P(p(X_ne
 
 ## Pipeline placement and selection
 
-For the coverage theorem, use `ConformalRegressor(Pipeline([("scaler", StandardScaler()), ("ridge", Ridge())]), prediction_mode="point", auto_calibrate=True, random_state=42)` and its classification equivalent. This is the alternative to the default outer-preprocessing workflow when calibration must be excluded from every learned step. Internal splitting then happens before every fitted pipeline step. Wrapping `GridSearchCV(Pipeline(...))` also keeps calibration out of tuning. Tuning a wrapper externally and then reusing its internal calibration split can introduce selection dependence; recalibrate on fresh held-out data.
+For the coverage theorem, use `ConformalRegressor(Pipeline([("scaler", StandardScaler()), ("ridge", Ridge())]), auto_calibrate=True, random_state=42)` and its classification equivalent. This is the alternative to the default outer-preprocessing workflow when calibration must be excluded from every learned step. Internal splitting then happens before every fitted pipeline step. Wrapping `GridSearchCV(Pipeline(...))` also keeps calibration out of tuning. Tuning a wrapper externally and then reusing its internal calibration split can introduce selection dependence; recalibrate on fresh held-out data.
 
 An outer `Pipeline([("preprocessing", preprocessing), ("conformal", wrapper)])` is valid with manual calibration held out before `Pipeline.fit`: transform calibration features using the fitted prefix, then call the final wrapper's `calibrate`. Automatically splitting only inside the final wrapper allows preceding learned transformers to see calibration features. The standard proof above then does not apply. Stateless transformations are safe. Outcome stratification, ordered splitting and grouped sampling need assumptions appropriate to their sampling scheme; the default random, unstratified split avoids those extra requirements for iid data.
 

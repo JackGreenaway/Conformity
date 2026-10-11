@@ -40,14 +40,14 @@ def test_fit_and_calibrate(
     """Verify fit and calibrate."""
     X_train, X_test, y_train, y_test = synthetic_classification_data
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
 
     clf.fit(X_train, y_train)
     clf.calibrate(X_test, y_test)
 
     assert clf.is_calibrated_
-    assert hasattr(clf, "calibration_non_conformity")
-    assert hasattr(clf, "n_calib")
+    assert hasattr(clf, "calibration_scores_")
+    assert hasattr(clf, "n_calibration_")
 
 
 def test_predict_without_calibration_raises(
@@ -58,11 +58,11 @@ def test_predict_without_calibration_raises(
     """Verify predict without calibration raises."""
     X_train, X_test, y_train, y_test = synthetic_classification_data
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
     clf.fit(X_train, y_train)
 
     with pytest.raises(RuntimeError):
-        clf.predict(X_test)
+        clf.predict(X_test, return_set=True)
 
 
 def test_multiple_calibrations_warn(
@@ -73,7 +73,7 @@ def test_multiple_calibrations_warn(
     """Verify multiple calibrations warn."""
     X_train, X_test, y_train, y_test = synthetic_classification_data
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
 
     clf.fit(X_train, y_train)
     clf.calibrate(X_test, y_test)
@@ -92,7 +92,7 @@ def test_auto_calibrate_argument(
     """Verify auto calibrate argument."""
     X_train, X_test, y_train, y_test = synthetic_classification_data
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
 
     clf.fit(
         np.concatenate([X_train, X_test]),
@@ -112,7 +112,7 @@ def test_calibrate_without_fit_raises(
     """Verify calibrate without fit raises."""
     X_train, X_test, y_train, y_test = synthetic_classification_data
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
 
     with pytest.raises((RuntimeError, AttributeError)):
         clf.calibrate(X_test, y_test)
@@ -126,7 +126,7 @@ def test_mismatched_x_y_shapes_raises(
     """Verify mismatched x y shapes raises."""
     X_train, X_test, y_train, y_test = synthetic_classification_data
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
 
     with pytest.raises(ValueError):
         clf.fit(X_train, y_train[:-10])
@@ -140,7 +140,7 @@ def test_calibrate_with_mismatched_shapes_raises(
     """Verify calibrate with mismatched shapes raises."""
     X_train, X_test, y_train, y_test = synthetic_classification_data
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
     clf.fit(X_train, y_train)
 
     with pytest.raises((ValueError, IndexError)):
@@ -159,7 +159,7 @@ def test_auto_calibrate_with_small_dataset(
     X_small = X_train[:50]
     y_small = y_train[:50]
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
 
     clf.fit(
         X_small,
@@ -169,7 +169,7 @@ def test_auto_calibrate_with_small_dataset(
     )
 
     assert clf.is_calibrated_
-    assert hasattr(clf, "calibration_non_conformity")
+    assert hasattr(clf, "calibration_scores_")
 
 
 def test_calibration_set_size_recorded(
@@ -180,11 +180,11 @@ def test_calibration_set_size_recorded(
     """Verify calibration set size recorded."""
     X_train, X_test, y_train, y_test = synthetic_classification_data
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
     clf.fit(X_train, y_train)
     clf.calibrate(X_test, y_test)
 
-    assert clf.n_calib == X_test.shape[0]
+    assert clf.n_calibration_ == X_test.shape[0]
 
 
 def test_non_conformity_scores_are_valid(
@@ -195,17 +195,15 @@ def test_non_conformity_scores_are_valid(
     """Verify non conformity scores are valid."""
     X_train, X_test, y_train, y_test = synthetic_classification_data
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
     clf.fit(X_train, y_train)
     clf.calibrate(X_test, y_test)
 
     # Non-conformity scores should be numeric
-    assert hasattr(clf, "calibration_non_conformity")
-    assert clf.calibration_non_conformity is not None
-    assert len(clf.calibration_non_conformity) > 0
-    assert all(
-        isinstance(x, (int, float, np.number)) for x in clf.calibration_non_conformity
-    )
+    assert hasattr(clf, "calibration_scores_")
+    assert clf.calibration_scores_ is not None
+    assert len(clf.calibration_scores_) > 0
+    assert all(isinstance(x, (int, float, np.number)) for x in clf.calibration_scores_)
 
 
 def test_predict_returns_output(
@@ -216,11 +214,11 @@ def test_predict_returns_output(
     """Verify predict returns output."""
     X_train, X_test, y_train, y_test = synthetic_classification_data
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
     clf.fit(X_train, y_train)
     clf.calibrate(X_test, y_test)
 
-    result = clf.predict(X_test[:10], alpha=0.1)
+    result = clf.predict(X_test[:10], alpha=0.1, return_set=True)
 
     assert result is not None
 
@@ -233,12 +231,12 @@ def test_predict_with_different_alpha_values(
     """Verify predict with different alpha values."""
     X_train, X_test, y_train, y_test = synthetic_classification_data
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
     clf.fit(X_train, y_train)
     clf.calibrate(X_test, y_test)
 
-    result1 = clf.predict(X_test[:10], alpha=0.01)
-    result2 = clf.predict(X_test[:10], alpha=0.5)
+    result1 = clf.predict(X_test[:10], alpha=0.01, return_set=True)
+    result2 = clf.predict(X_test[:10], alpha=0.5, return_set=True)
 
     assert result1 is not None
     assert result2 is not None
@@ -256,9 +254,11 @@ def test_fit_with_different_estimators(
 
     for EstimatorClass in [LogisticRegression, DecisionTreeClassifier]:
         if EstimatorClass == LogisticRegression:
-            clf = ConformalClassifier(EstimatorClass(max_iter=1000))
+            clf = ConformalClassifier(
+                EstimatorClass(max_iter=1000), auto_calibrate=False
+            )
         else:
-            clf = ConformalClassifier(EstimatorClass())
+            clf = ConformalClassifier(EstimatorClass(), auto_calibrate=False)
 
         clf.fit(X_train, y_train)
         clf.calibrate(X_test, y_test)
@@ -274,11 +274,11 @@ def test_single_sample_prediction_returns(
     """Verify single sample prediction returns."""
     X_train, X_test, y_train, y_test = synthetic_classification_data
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
     clf.fit(X_train, y_train)
     clf.calibrate(X_test, y_test)
 
-    result = clf.predict(X_test[:1], alpha=0.1)
+    result = clf.predict(X_test[:1], alpha=0.1, return_set=True)
 
     assert result is not None
 
@@ -291,7 +291,7 @@ def test_fit_preserves_data_shapes(
     """Verify fit preserves data shapes."""
     X_train, X_test, y_train, y_test = synthetic_classification_data
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
 
     original_X_shape = X_train.shape
     original_y_shape = y_train.shape
@@ -310,7 +310,7 @@ def test_calibrate_preserves_data_shapes(
     """Verify calibrate preserves data shapes."""
     X_train, X_test, y_train, y_test = synthetic_classification_data
 
-    clf = ConformalClassifier(LogisticRegression(max_iter=1000))
+    clf = ConformalClassifier(LogisticRegression(max_iter=1000), auto_calibrate=False)
     clf.fit(X_train, y_train)
 
     original_X_shape = X_test.shape

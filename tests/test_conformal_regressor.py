@@ -35,14 +35,14 @@ def test_fit_and_calibrate(
     """Verify fit and calibrate."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
 
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
     assert reg.is_calibrated_
-    assert hasattr(reg, "calibration_non_conformity")
-    assert hasattr(reg, "n_calib")
+    assert hasattr(reg, "calibration_scores_")
+    assert hasattr(reg, "n_calibration_")
 
 
 def test_predict_interval_shape(
@@ -53,12 +53,12 @@ def test_predict_interval_shape(
     """Verify predict interval shape."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
 
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    y_pred, intervals = reg.predict(X_test, alpha=0.1)
+    y_pred, intervals = reg.predict(X_test, alpha=0.1, return_interval=True)
 
     assert y_pred.shape[0] == X_test.shape[0]
     assert intervals.shape == (X_test.shape[0], 2)
@@ -73,11 +73,11 @@ def test_predict_without_calibration_raises(
     """Verify predict without calibration raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
     reg.fit(X_train, y_train)
 
     with pytest.raises(RuntimeError):
-        reg.predict(X_test)
+        reg.predict(X_test, return_interval=True)
 
 
 def test_multiple_calibrations_warn(
@@ -88,7 +88,7 @@ def test_multiple_calibrations_warn(
     """Verify multiple calibrations warn."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
 
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
@@ -107,13 +107,13 @@ def test_predict_with_different_alpha(
     """Verify predict with different alpha."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
 
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    _, intervals_01 = reg.predict(X_test, alpha=0.01)
-    _, intervals_20 = reg.predict(X_test, alpha=0.20)
+    _, intervals_01 = reg.predict(X_test, alpha=0.01, return_interval=True)
+    _, intervals_20 = reg.predict(X_test, alpha=0.20, return_interval=True)
 
     assert np.all(
         (intervals_01[:, 1] - intervals_01[:, 0])
@@ -129,7 +129,7 @@ def test_auto_calibrate_argument(
     """Verify auto calibrate argument."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
 
     reg.fit(
         np.concatenate([X_train, X_test]),
@@ -149,12 +149,12 @@ def test_interval_contains_true_value(
     """Verify interval contains true value."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
 
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    y_pred, intervals = reg.predict(X_test, alpha=0.1)
+    y_pred, intervals = reg.predict(X_test, alpha=0.1, return_interval=True)
 
     # check that at least 85% of true values are within the intervals (since alpha=0.1, expect ~90%)
     coverage = np.mean((y_test >= intervals[:, 0]) & (y_test <= intervals[:, 1]))
@@ -167,13 +167,13 @@ def test_extreme_inputs() -> None:
     X = np.array([[1e10], [-1e10], [0]])
     y = np.array([1e10, -1e10, 0])
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
 
     reg.fit(X, y)
     reg.calibrate(X, y)
 
     with warnings.catch_warnings(record=True) as w:
-        y_pred, intervals = reg.predict(X)
+        y_pred, intervals = reg.predict(X, return_interval=True)
 
         assert any("Quantile value" in str(warn.message) for warn in w)
 
@@ -190,12 +190,12 @@ def test_single_sample_prediction(
     """Verify single sample prediction."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
     single_sample = X_test[:1]
-    y_pred, intervals = reg.predict(single_sample, alpha=0.1)
+    y_pred, intervals = reg.predict(single_sample, alpha=0.1, return_interval=True)
 
     assert y_pred.shape == (1,)
     assert intervals.shape == (1, 2)
@@ -210,14 +210,14 @@ def test_alpha_boundary_values(
     """Verify alpha boundary values."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
     # Test alpha very close to 0
-    _, intervals_small = reg.predict(X_test, alpha=0.001)
+    _, intervals_small = reg.predict(X_test, alpha=0.001, return_interval=True)
     # Test alpha close to 1
-    _, intervals_large = reg.predict(X_test, alpha=0.99)
+    _, intervals_large = reg.predict(X_test, alpha=0.99, return_interval=True)
 
     # interval widths should increase with alpha
     # Use isclose for numerical comparison with small numbers
@@ -237,7 +237,7 @@ def test_fit_without_features_raises(
     """Verify fit without features raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
 
     with pytest.raises((ValueError, IndexError)):
         reg.fit(np.array([]), np.array([]))
@@ -251,7 +251,7 @@ def test_calibrate_without_fit_raises(
     """Verify calibrate without fit raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
 
     with pytest.raises((RuntimeError, AttributeError)):
         reg.calibrate(X_test, y_test)
@@ -265,7 +265,7 @@ def test_mismatched_x_y_shapes_raises(
     """Verify mismatched x y shapes raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
 
     with pytest.raises(ValueError):
         reg.fit(X_train, y_train[:-10])
@@ -279,7 +279,7 @@ def test_calibrate_with_mismatched_shapes_raises(
     """Verify calibrate with mismatched shapes raises."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
     reg.fit(X_train, y_train)
 
     with pytest.raises(ValueError):
@@ -294,11 +294,11 @@ def test_prediction_intervals_monotonic(
     """Verify prediction intervals monotonic."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    y_pred, intervals = reg.predict(X_test, alpha=0.1)
+    y_pred, intervals = reg.predict(X_test, alpha=0.1, return_interval=True)
 
     # Lower bound should be <= prediction <= upper bound
     assert np.all(intervals[:, 0] <= y_pred)
@@ -313,12 +313,12 @@ def test_consistent_predictions(
     """Verify consistent predictions."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    y_pred1, intervals1 = reg.predict(X_test, alpha=0.1)
-    y_pred2, intervals2 = reg.predict(X_test, alpha=0.1)
+    y_pred1, intervals1 = reg.predict(X_test, alpha=0.1, return_interval=True)
+    y_pred2, intervals2 = reg.predict(X_test, alpha=0.1, return_interval=True)
 
     # Predictions should be deterministic
     np.testing.assert_array_equal(y_pred1, y_pred2)
@@ -333,7 +333,7 @@ def test_increasing_alpha_increases_intervals(
     """Verify increasing alpha increases intervals."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
@@ -341,7 +341,7 @@ def test_increasing_alpha_increases_intervals(
     widths = []
 
     for alpha in alphas:
-        _, intervals = reg.predict(X_test, alpha=alpha)
+        _, intervals = reg.predict(X_test, alpha=alpha, return_interval=True)
         width = np.mean(intervals[:, 1] - intervals[:, 0])
         widths.append(width)
 
@@ -361,7 +361,7 @@ def test_auto_calibrate_with_small_dataset(
     X_small = X_train[:50]
     y_small = y_train[:50]
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
 
     reg.fit(
         X_small,
@@ -371,7 +371,7 @@ def test_auto_calibrate_with_small_dataset(
     )
 
     assert reg.is_calibrated_
-    assert hasattr(reg, "calibration_non_conformity")
+    assert hasattr(reg, "calibration_scores_")
 
 
 def test_predict_different_sample_sizes(
@@ -382,14 +382,14 @@ def test_predict_different_sample_sizes(
     """Verify predict different sample sizes."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
     # Test predictions for various numbers of samples
     for n_samples in [1, 10, 100, 500]:
         X_subset = X_test[:n_samples]
-        y_pred, intervals = reg.predict(X_subset, alpha=0.1)
+        y_pred, intervals = reg.predict(X_subset, alpha=0.1, return_interval=True)
 
         assert y_pred.shape[0] == n_samples
         assert intervals.shape == (n_samples, 2)
@@ -407,7 +407,7 @@ def test_calibration_with_identical_features(
     X_calib = X_test[:5].copy()
     y_calib = y_test[:5].copy()
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
     reg.fit(X_train, y_train)
     reg.calibrate(X_calib, y_calib)
 
@@ -422,17 +422,15 @@ def test_non_conformity_scores_are_valid(
     """Verify non conformity scores are valid."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
     # Non-conformity scores should be numeric and non-negative (typically absolute residuals)
-    assert hasattr(reg, "calibration_non_conformity")
-    assert reg.calibration_non_conformity is not None
-    assert len(reg.calibration_non_conformity) > 0
-    assert all(
-        isinstance(x, (int, float, np.number)) for x in reg.calibration_non_conformity
-    )
+    assert hasattr(reg, "calibration_scores_")
+    assert reg.calibration_scores_ is not None
+    assert len(reg.calibration_scores_) > 0
+    assert all(isinstance(x, (int, float, np.number)) for x in reg.calibration_scores_)
 
 
 def test_predict_with_all_zero_targets(
@@ -446,11 +444,11 @@ def test_predict_with_all_zero_targets(
     # Create dataset with all zero targets
     y_zero = np.zeros_like(y_train)
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
     reg.fit(X_train, y_zero)
     reg.calibrate(X_test, np.zeros_like(y_test))
 
-    y_pred, intervals = reg.predict(X_test, alpha=0.1)
+    y_pred, intervals = reg.predict(X_test, alpha=0.1, return_interval=True)
 
     assert y_pred.shape[0] == X_test.shape[0]
     assert intervals.shape == (X_test.shape[0], 2)
@@ -464,12 +462,12 @@ def test_large_alpha_produces_wide_intervals(
     """Verify large alpha produces wide intervals."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    _, intervals_small = reg.predict(X_test, alpha=0.01)
-    _, intervals_large = reg.predict(X_test, alpha=0.9)
+    _, intervals_small = reg.predict(X_test, alpha=0.01, return_interval=True)
+    _, intervals_large = reg.predict(X_test, alpha=0.9, return_interval=True)
 
     avg_width_small = np.mean(intervals_small[:, 1] - intervals_small[:, 0])
     avg_width_large = np.mean(intervals_large[:, 1] - intervals_large[:, 0])
@@ -485,11 +483,11 @@ def test_calibration_set_size_recorded(
     """Verify calibration set size recorded."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    assert reg.n_calib == X_test.shape[0]
+    assert reg.n_calibration_ == X_test.shape[0]
 
 
 def test_predict_returns_correct_types(
@@ -500,11 +498,11 @@ def test_predict_returns_correct_types(
     """Verify predict returns correct types."""
     X_train, X_test, y_train, y_test = synthetic_regression_data
 
-    reg = ConformalRegressor(LinearRegression())
+    reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
     reg.fit(X_train, y_train)
     reg.calibrate(X_test, y_test)
 
-    y_pred, intervals = reg.predict(X_test[:5], alpha=0.1)
+    y_pred, intervals = reg.predict(X_test[:5], alpha=0.1, return_interval=True)
 
     assert isinstance(y_pred, np.ndarray)
     assert isinstance(intervals, np.ndarray)
