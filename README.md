@@ -10,7 +10,7 @@ Regression intervals · Classification sets · Scikit-learn workflows
 [![Tests](https://github.com/JackGreenaway/Conformity/actions/workflows/tests.yml/badge.svg)](https://github.com/JackGreenaway/Conformity/actions/workflows/tests.yml)
 [![PyPI](https://img.shields.io/pypi/v/conformity-calib?style=flat-square)](https://pypi.org/project/conformity-calib/)
 
-[Quick start](#quick-start) · [Documentation](https://jackgreenaway.github.io/Conformity/) · [API reference](docs/api.md) · [Theory](THEORY.md) · [Development](docs/development.md)
+[Quick start](#quick-start) · [Documentation](https://jackgreenaway.github.io/Conformity/) · [API reference](docs/api.md) · [Theory](docs/theory.md) · [Development](docs/development.md)
 
 </div>
 
@@ -83,7 +83,7 @@ Coverage is **marginal under exchangeability**, with fitting and model selection
 
 Regression supports one numeric target with symmetric absolute-residual intervals. Classification supports LAC and deterministic APS scores and requires valid `predict_proba` output. Calibration is unweighted; weights affect fitting or evaluation only.
 
-Read [calibration and assumptions](docs/user-guide/calibration.md) and the [statistical theory](THEORY.md) before making decisions from uncertainty output.
+Read [calibration and assumptions](docs/user-guide/calibration.md) and the [theory guide](docs/theory.md) before making decisions from uncertainty output.
 
 ## Documentation
 

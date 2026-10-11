@@ -2,38 +2,53 @@
 
 ## Question
 
-How can a decision use a predicted range rather than a single estimate? Start with the runnable [getting started workflow](../getting-started.md). Here a simpler synthetic relation makes the calibration choices visible.
+Will a parcel arrive within 48 hours? A point estimate of 46 hours looks reassuring, but an interval spanning 40–52 hours exposes uncertainty around the deadline. This example simulates delivery times in hours from distance and parcel weight; it needs no downloaded dataset.
 
 ```python
 import numpy as np
 from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
 
 from conformity import ConformalRegressor
 
 rng = np.random.default_rng(12)
-X = rng.normal(size=(600, 2))
-y = 3 * X[:, 0] + rng.normal(size=600)
-model = ConformalRegressor(LinearRegression(), auto_calibrate=False).fit(
-    X[:300], y[:300]
+# Synthetic deliveries: distance in km and parcel weight in kg.
+X = np.column_stack((rng.uniform(20, 500, 600), rng.uniform(0.5, 20, 600)))
+y = 8 + 0.08 * X[:, 0] + 0.4 * X[:, 1] + rng.normal(0, 4, 600)
+
+# Reserve 25% for final testing; split the remaining 75% into training/calibration.
+X_dev, X_test, y_dev, y_test = train_test_split(X, y, test_size=0.25, random_state=13)
+X_train, X_calib, y_train, y_calib = train_test_split(
+    X_dev, y_dev, test_size=1 / 3, random_state=14
 )
-model.calibrate(X[300:450], y[300:450])
-intervals = model.predict_interval(X[450:], alpha=0.1)
-report = model.evaluate(X[450:], y[450:], alpha=0.1)
-needs_review = (intervals[:, 0] <= 0) & (intervals[:, 1] >= 0)
+
+# The explicit calibration split means the wrapper should not split again.
+model = ConformalRegressor(LinearRegression(), auto_calibrate=False)
+model.fit(X_train, y_train)
+model.calibrate(X_calib, y_calib)
+alpha = 0.1
+points, intervals = model.predict(X_test, alpha=alpha, return_interval=True)
+report = model.evaluate(X_test, y_test, alpha=alpha)
+
+deadline_hours = 48.0
+needs_review = (intervals[:, 0] <= deadline_hours) & (deadline_hours <= intervals[:, 1])
+assert len(X_train) == 300
+assert model.n_calibration_ == len(X_calib) == 150
 assert needs_review.shape == (150,)
-assert model.n_calibration_ == 150
 assert 0 <= report["coverage"] <= 1
 print(report)
-print("Intervals crossing the decision boundary:", int(needs_review.sum()))
+print("Deliveries whose intervals cross 48 hours:", int(needs_review.sum()))
+print("First three [observed, predicted, lower, upper] delivery times:")
+print(np.round(np.column_stack((y_test, points, intervals))[:3], 1))
 ```
 
 ## Configuration choices
 
-Explicit fit/calibration/test slices keep all three roles disjoint. `auto_calibrate=False` avoids making a second internal split. A boundary of zero is an illustrative policy, not a package default.
+Two `train_test_split` calls create 300 training, 150 calibration and 150 test deliveries. The first reserves 25% for testing; the second reserves one third of the remaining 450 rows for calibration. Fixed seeds make the splits reproducible, and default shuffling chooses rows independently of their outcomes. `auto_calibrate=False` avoids making a second internal split. The 48-hour deadline is an illustrative delivery policy.
 
 ## Results and interpretation
 
-The report pairs point error with coverage, width and interval score. An interval crossing zero suggests the outcome could plausibly lie on either side. This rule does not give conditional coverage for the reviewed subset or guarantee a business loss rate.
+The report pairs point error with coverage, width and interval score, with widths expressed in hours. The printed rows compare actual delivery times with predictions and bounds on unseen test deliveries. An interval crossing 48 hours suggests the delivery could plausibly fall on either side of the deadline, so it is a candidate for review. An interval entirely above 48 hours flags a different issue: a likely late delivery. Neither rule gives conditional coverage for its selected subset or guarantees a service-level success rate.
 
 ## Next steps
 

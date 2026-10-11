@@ -18,6 +18,7 @@ nav:
   - Installation: installation.md
   - Getting started: getting-started.md
   - Plotting: plotting.md
+  - Theory: theory.md
   - User guide:
       - Estimators and pipelines: user-guide/estimators.md
       - Regression intervals: user-guide/regression.md

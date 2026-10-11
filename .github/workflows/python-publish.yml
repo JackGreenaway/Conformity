@@ -1,18 +1,11 @@
 name: Upload Python Package
 
 on:
+  workflow_run:
+    workflows: [Create GitHub Release]
+    types: [completed]
   release:
     types: [published]
-  workflow_call:
-    inputs:
-      artifact-name:
-        description: Validated distributions from the calling release workflow
-        required: true
-        type: string
-      release-tag:
-        description: Release tag that must match the source and distribution versions
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -23,61 +16,84 @@ concurrency:
 
 jobs:
   release-build:
-    # Both paths validate the tag; manually published releases also run all gates.
-    if: github.event_name != 'release' || github.event.release.prerelease == false
+    # Automatic releases must finish successfully before any upload is allowed.
+    if: >-
+      github.event_name == 'release' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'workflow_dispatch' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
-    env:
-      RELEASE_TAG: ${{ inputs.release-tag || github.event.release.tag_name }}
+    permissions:
+      contents: read
+      actions: read
+
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.release-tag || github.event.release.tag_name }}
-      - uses: astral-sh/setup-uv@v5
-      - run: uv python install 3.12
-      - name: Install locked validation and build dependencies
-        run: uv sync --locked --group docs --group release --python 3.12
-      - name: Validate tagged source versions
-        run: uv run --locked --group docs --group release --python 3.12 python scripts/check_release.py
-      - name: Retrieve distributions supplied by the release workflow
-        if: inputs.artifact-name != ''
+      - name: Retrieve the validated GitHub release distributions
+        if: github.event_name == 'workflow_run'
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.artifact-name }}
-          path: ${{ runner.temp }}/release-dist
-      - name: Validate manually published release
-        if: inputs.artifact-name == ''
-        run: bash scripts/validate.sh
-      - name: Build manually published release from tagged source
-        if: inputs.artifact-name == ''
-        run: uv run --locked --group docs --group release --python 3.12 python -m build --no-isolation --outdir "$RUNNER_TEMP/release-dist"
-      - name: Check distribution metadata and embedded versions
+          name: created-release-dists
+          path: dist/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      # Releases published through the GitHub UI keep their existing build path.
+      - name: Check out the published release tag
+        if: github.event_name == 'release'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Install uv for a manually published release
+        if: github.event_name == 'release'
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build manually published release distributions
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          uv run --locked --group docs --group release --python 3.12 python -m twine check --strict "$RUNNER_TEMP/release-dist"/*
-          uv run --locked --group docs --group release --python 3.12 python scripts/check_release.py --dist "$RUNNER_TEMP/release-dist"
-      - name: Save validated distributions for the isolated publishing job
+          uv sync --locked --group docs --group release --python 3.12
+          uv run --locked --group docs --group release --python 3.12 python - <<'PY'
+          import os
+          import tomllib
+
+          from conformity import __version__
+
+          with open("pyproject.toml", "rb") as source:
+              version = tomllib.load(source)["project"]["version"]
+          if __version__ != version or os.environ["RELEASE_TAG"] != f"v{version}":
+              raise SystemExit("Release tag, project.version, and __version__ must match")
+          PY
+          bash scripts/validate.sh
+          uv run --locked --group docs --group release --python 3.12 python -m build --no-isolation --outdir dist
+          uv run --locked --group docs --group release --python 3.12 python -m twine check --strict dist/*
+          uv run --locked --group docs --group release --python 3.12 python scripts/check_release.py --dist dist
+
+      - name: Save distributions for the isolated publishing job
         uses: actions/upload-artifact@v4
         with:
           name: release-dists
           path: |
-            ${{ runner.temp }}/release-dist/*.whl
-            ${{ runner.temp }}/release-dist/*.tar.gz
+            dist/*.whl
+            dist/*.tar.gz
           if-no-files-found: error
 
   pypi-publish:
     runs-on: ubuntu-latest
     needs: release-build
-    permissions:
-      id-token: write
     environment:
       name: pypi
       url: https://pypi.org/project/conformity-calib/
+    permissions:
+      id-token: write
+
     steps:
-      - name: Retrieve validated release distributions
+      - name: Retrieve release distributions
         uses: actions/download-artifact@v4
         with:
           name: release-dists
           path: dist/
-      - name: Publish to PyPI using trusted publishing
+
+      - name: Publish release distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: dist/

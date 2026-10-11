@@ -60,13 +60,21 @@ Create the GitHub environment **`pypi`** and set its protection rules. On the **
 | Workflow filename | `python-publish.yml` |
 | Environment | `pypi` |
 
-The publisher uses OIDC in a separate job with `id-token: write`, downloads only validated artifacts and does not use an API-token secret. Configure these settings before invoking a release. Install both release and reusable publishing workflows on the default branch.
+The publisher uses OIDC in a separate job with `id-token: write`, downloads only validated artifacts and does not use an API-token secret. Configure these settings before invoking a release. Install both release and publishing workflows on the default branch. The publisher listens for `workflow_run`, which requires its workflow file on that branch.
 
 ## Release procedure
 
 1. Set `project.version` and `src/conformity/__init__.py`'s `__version__` to the same new `X.Y.Z`; update `uv.lock` and regenerate references if implementation changed.
 2. Run the local validation and distribution checks above. Commit and push the intended revision.
-3. Run **Create GitHub Release** from Actions on the intended revision. It runs the supported Python test matrix, rejects existing version tags, validates documentation and builds/checks fresh distributions before creating `vX.Y.Z` and attaching artifacts.
-4. Its explicit reusable-workflow call publishes those same artifacts through the `pypi` environment. This handoff works when `GITHUB_TOKEN` suppresses release-triggered workflows. Manually published stable GitHub releases also validate the tagged source and build/check fresh distributions before publishing.
+3. Run **Create GitHub Release** from Actions on the intended revision. It runs package tests and documentation checks on Python 3.12, rejects existing version tags and builds/checks fresh distributions before creating `vX.Y.Z` and attaching artifacts.
+4. Once **Create GitHub Release** finishes successfully, a separate **Upload Python Package** run starts through `workflow_run`. It accepts only successful manual release-workflow runs from this repository, downloads `created-release-dists` from that exact run, and publishes those same artifacts through the `pypi` environment. This matches polars-learn's handoff and works when `GITHUB_TOKEN` suppresses release-triggered workflows. Releases published manually through GitHub also validate the tag and source and build/check fresh distributions before publishing.
 
-If publishing fails after release creation, fix the setup and rerun the failed publishing jobs while artifacts remain available. Do not try to create the same tag again. PyPI versions cannot be overwritten; use a new version for changed artifacts. Prerelease tags and versions are outside these stable `X.Y.Z` workflows.
+Publishing runs directly in `python-publish.yml`, rather than through a reusable workflow. PyPI rejected the previous reusable handoff because its attestation named the parent `create-release.yml` instead of the configured trusted publisher; see [PyPI's reusable-workflow limitation](https://docs.pypi.org/trusted-publishers/troubleshooting/#reusable-workflows-on-github). Keep the trusted publisher set to `python-publish.yml` and environment `pypi`.
+
+If publishing fails after release creation, fix the setup and rerun **Upload Python Package** while the original release-run artifacts remain available. Do not try to create the same tag again. PyPI versions cannot be overwritten; use a new version for changed artifacts. Prerelease versions are outside these `X.Y.Z` workflows.
+
+### Recovering the existing v0.1.7 release
+
+The failed run created the `v0.1.7` GitHub release successfully; its PyPI upload was rejected. Do not run **Create GitHub Release** again for that version: its existing-tag check will correctly fail.
+
+After committing these workflow fixes to `main`, start a new publisher run for the existing release by converting it to a draft and publishing it again through GitHub Releases. The `release: published` path checks out the existing tag and validates/builds that source before uploading it. This publishes the tagged version, not any later uncommitted documentation edits. Confirm that the PyPI publisher settings above are in place. Rerunning the old failed reusable-workflow jobs alone uses the old workflow revision and does not apply this fix.

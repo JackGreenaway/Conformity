@@ -31,3 +31,7 @@ Split conformal coverage is marginal over exchangeable calibration and future ob
 Regression currently provides symmetric, constant-width, single-output intervals. Classification requires valid `predict_proba` output and uses LAC or deterministic APS; empty sets are valid outcomes. Tiny calibration sets can require infinite intervals or all-class sets.
 
 Read [calibration and limitations](user-guide/calibration.md) before using the results to make decisions. The [original documentation](legacy/README.md), [API guide](legacy/DOCUMENTATION.md), and [statistical specification](legacy/THEORY.md) remain available in full.
+
+## Understand the theory
+
+Read [the theory behind conformal prediction](theory.md) for the intuition, finite-sample rank proof, regression and classification scores, and the limits of marginal coverage. A worked threshold calculation connects the mathematics to the returned prediction regions.

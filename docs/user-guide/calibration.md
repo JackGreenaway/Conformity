@@ -22,4 +22,4 @@ For finite regression bounds you need at least $\alpha \ge 1/(n+1)$. Selecting a
 
 Coverage is unweighted and marginal. Learned preprocessing, model tuning and method selection must stay independent of final calibration. Weighted metrics affect evaluation only. For drift, time series, covariate-conditioned guarantees or adaptive online calibration, this package's current methods are insufficient on their own.
 
-Read the full [statistical specification](../legacy/THEORY.md), including its score definitions and proof. Evaluate coverage and efficiency together using [diagnostics](diagnostics.md).
+Start with [the theory guide](../theory.md) for the intuition and coverage proof. Read the full [statistical specification](../legacy/THEORY.md), including its score definitions and proof. Evaluate coverage and efficiency together using [diagnostics](diagnostics.md).
