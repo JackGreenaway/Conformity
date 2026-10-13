@@ -13,6 +13,8 @@ Sets include candidate scores at or below the threshold. `predict_set` returns a
 
 `predict_p_values` returns conformal tail-rank p-values for every candidate, including a finite-sample correction and inclusive ties. They are not posterior class probabilities. Changing the score method requires recalibration; `set_params` also removes fitted state and requires refitting.
 
+For an imbalanced test set, inspect `prediction_set_coverage_by_class` alongside overall coverage and each class's sample count. These are empirical subgroup rates: marginal split calibration does not promise the target coverage within every class. See the [diagnostics guide](diagnostics.md) for an example.
+
 ## Limitations
 
 A singleton is not an individual correctness guarantee. Empty sets and all-class sets are permitted. Tiny calibration sets can require including every class. Tune the point model and choose LAC or APS without looking at the final calibration or test outcomes.

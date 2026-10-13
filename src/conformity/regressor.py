@@ -330,7 +330,7 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
         *,
         sample_weight: Optional[ArrayLike] = None,
     ) -> dict[str, float]:
-        """Return point error, coverage, mean width, and interval score.
+        """Return point error, coverage, tail misses, width and interval score.
 
         Parameters
         ----------
@@ -346,7 +346,13 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
         Returns
         -------
         report : dict of str to float
-            Keys are r2, mae, mse, coverage, mean_width and interval_score.
+            Keys are r2, mae, mse, coverage, lower_miss_rate,
+            upper_miss_rate, mean_width, normalized_mean_width and
+            interval_score. Normalized width divides mean width by the
+            unweighted test-target IQR and is infinite when that IQR is zero.
+            Tail miss rates are empirical diagnostics; for asymmetric
+            intervals compare each with alpha / 2, allowing for finite
+            test-sample variation.
 
         Raises
         ------
@@ -363,7 +369,10 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
         from .metrics import (
             interval_score,
             prediction_interval_coverage,
+            prediction_interval_lower_miss_rate,
+            prediction_interval_upper_miss_rate,
             prediction_interval_width,
+            normalized_prediction_interval_width,
         )
 
         X = self._validate_X(X)
@@ -377,8 +386,17 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
             "coverage": prediction_interval_coverage(
                 y, intervals, sample_weight=sample_weight
             ),
+            "lower_miss_rate": prediction_interval_lower_miss_rate(
+                y, intervals, sample_weight=sample_weight
+            ),
+            "upper_miss_rate": prediction_interval_upper_miss_rate(
+                y, intervals, sample_weight=sample_weight
+            ),
             "mean_width": prediction_interval_width(
                 intervals, sample_weight=sample_weight
+            ),
+            "normalized_mean_width": normalized_prediction_interval_width(
+                y, intervals, sample_weight=sample_weight
             ),
             "interval_score": interval_score(
                 y, intervals, alpha, sample_weight=sample_weight

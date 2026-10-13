@@ -8,9 +8,13 @@ import pytest
 
 from conformity.metrics import (
     interval_score,
+    normalized_prediction_interval_width,
     prediction_interval_coverage,
+    prediction_interval_lower_miss_rate,
+    prediction_interval_upper_miss_rate,
     prediction_interval_width,
     prediction_set_coverage,
+    prediction_set_coverage_by_class,
     prediction_set_size,
     prediction_set_empty_rate,
     prediction_set_singleton_rate,
@@ -43,6 +47,33 @@ def test_weighted_interval_diagnostics() -> None:
     bounds = [[0, 2], [1, 5]]
     assert prediction_interval_width(bounds, sample_weight=[3, 1]) == 2.5
     assert interval_score([1, 6], bounds, alpha=0.2, sample_weight=[3, 1]) == 5
+    assert normalized_prediction_interval_width(
+        [0, 0, 2, 2], [[0, 2]] * 4, sample_weight=[1, 1, 1, 1]
+    ) == pytest.approx(1.0)
+    assert np.isinf(normalized_prediction_interval_width([3, 3], [[0, 2]] * 2))
+
+
+def test_tail_miss_and_classwise_coverage_diagnostics() -> None:
+    """Report which interval tail misses and per-class set coverage."""
+    y = [0, 2, 4, 6]
+    bounds = [[1, 3], [1, 3], [3, 5], [3, 5]]
+    assert prediction_interval_lower_miss_rate(y, bounds) == 0.25
+    assert prediction_interval_upper_miss_rate(y, bounds) == 0.25
+    mask = [[True, False], [False, True], [False, False], [True, True]]
+    assert prediction_set_coverage_by_class(
+        ["a", "b", "a", "b"], mask, classes=["a", "b"]
+    ) == {"a": 0.5, "b": 1.0}
+
+
+def test_classwise_coverage_requires_each_class_with_positive_weight() -> None:
+    """Reject empty class supports and classes removed by zero weights."""
+    mask = [[True, False], [False, True]]
+    with pytest.raises(ValueError, match="no observations"):
+        prediction_set_coverage_by_class(["a", "a"], mask, classes=["a", "b"])
+    with pytest.raises(ValueError, match="sample_weight"):
+        prediction_set_coverage_by_class(
+            ["a", "b"], mask, classes=["a", "b"], sample_weight=[1, 0]
+        )
 
 
 class TestPredictionIntervalCoverage:

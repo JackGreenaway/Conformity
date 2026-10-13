@@ -289,7 +289,10 @@ def test_evaluate_and_weighted_metrics() -> None:
         "mae",
         "mse",
         "coverage",
+        "lower_miss_rate",
+        "upper_miss_rate",
         "mean_width",
+        "normalized_mean_width",
         "interval_score",
     }
     clf = classifier().calibrate([[0.8, 0.2]] * 19, ["cat"] * 19)

@@ -58,7 +58,10 @@ r2: 0.904
 mae: 3.132
 mse: 15.087
 coverage: 0.953
+lower_miss_rate: 0.027
+upper_miss_rate: 0.020
 mean_width: 14.531
+normalized_mean_width: 0.704
 interval_score: 15.937
 Deliveries whose intervals cross 48 hours: 50
 First three [observed, predicted, lower, upper] delivery times:

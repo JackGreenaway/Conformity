@@ -43,8 +43,12 @@ results = cross_validate(
     cv=KFold(3, shuffle=True, random_state=53),
     scoring={
         "r2": "r2",
+        "mae": "neg_mean_absolute_error",
         "coverage": evaluate_metric("coverage"),
+        "lower_miss_rate": evaluate_metric("lower_miss_rate"),
+        "upper_miss_rate": evaluate_metric("upper_miss_rate"),
         "mean_width": evaluate_metric("mean_width"),
+        "normalized_mean_width": evaluate_metric("normalized_mean_width"),
         "interval_score": evaluate_metric("interval_score"),
     },
     return_estimator=True,
@@ -55,6 +59,13 @@ assert len(results["estimator"]) == 3
 assert all(fold.n_calibration_ == 40 for fold in results["estimator"])
 assert np.isfinite(results["test_r2"]).all()
 print("Fold point R²:", np.round(results["test_r2"], 3))
+print("Fold point MAE:", np.round(-results["test_mae"], 3))
 print("Fold coverage:", np.round(results["test_coverage"], 3))
+print("Fold lower-tail misses:", np.round(results["test_lower_miss_rate"], 3))
+print("Fold upper-tail misses:", np.round(results["test_upper_miss_rate"], 3))
 print("Fold mean width:", np.round(results["test_mean_width"], 3))
+print(
+    "Fold normalized mean width:",
+    np.round(results["test_normalized_mean_width"], 3),
+)
 print("Fold interval score:", np.round(results["test_interval_score"], 3))

@@ -13,7 +13,7 @@ The asymmetric method stores signed residuals. It selects a lower and upper corr
 | Get ordinary predictions | `predict(X)` or `predict_point(X)` | `(n_samples,)` points |
 | Get bounds | `predict_interval(X, alpha)` | `(n_samples, 2)` lower/upper bounds |
 | Get both | `predict(X, alpha, return_interval=True)` | `(points, intervals)` |
-| Measure uncertainty quality | `evaluate(X, y, alpha)` | R², MAE, MSE, coverage, width, interval score |
+| Measure uncertainty quality | `evaluate(X, y, alpha)` | R², MAE, MSE, coverage, lower/upper miss rates, mean and normalized width, interval score |
 
 ```python
 from sklearn.datasets import make_regression
@@ -44,7 +44,7 @@ For the asymmetric method, each calibration tail uses the corrected rank $\lceil
 
 Both methods produce fixed corrections across rows at a fixed alpha; only the asymmetric method allows the lower and upper correction sizes to differ. Neither is quantile regression or supports multi-output targets, and neither guarantees conditional coverage in heteroscedastic data. Too few calibration samples yield infinite bounds rather than a falsely narrow interval.
 
-Ordinary `score` is R² and uses point predictions; it does not evaluate interval quality. Match the interval score's alpha to the alpha used for prediction. Compare models at the same alpha using both coverage and width.
+Ordinary `score` is R² and uses point predictions; it does not evaluate interval quality. Match the interval score's alpha to the alpha used for prediction. Compare models at the same alpha using coverage, width and interval score. For asymmetric intervals, inspect lower and upper miss rates separately against the nominal `alpha / 2` per tail; on finite test samples these rates vary, and for symmetric intervals the two tails are not controlled separately.
 
 ## Next steps
 

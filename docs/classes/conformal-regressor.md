@@ -85,7 +85,7 @@ Split-conformal prediction intervals for single-output regression.
 | Method | Purpose |
 | --- | --- |
 | [calibrate](#calibrate) | Replace held-out scores and return this predictor for method chaining. |
-| [evaluate](#evaluate) | Return point error, coverage, mean width, and interval score. |
+| [evaluate](#evaluate) | Return point error, coverage, tail misses, width and interval score. |
 | [fit](#fit) | Fit a fresh clone; optionally reserve an independent calibration split. |
 | [get_metadata_routing](#get-metadata-routing) | Get metadata routing of this object. |
 | [get_params](#get-params) | Get parameters for this estimator. |
@@ -139,7 +139,7 @@ Replace held-out scores and return this predictor for method chaining.
     sample_weight=None,
 )</code></pre></div>
 
-Return point error, coverage, mean width, and interval score.
+Return point error, coverage, tail misses, width and interval score.
 
 #### Parameters
 
@@ -153,7 +153,7 @@ Return point error, coverage, mean width, and interval score.
 #### Returns
 
 <dl class="api-fields">
-<dt><code class="api-field-name">report</code> <span class="api-field-type">dict of str to float</span></dt><dd><p>Keys are r2, mae, mse, coverage, mean_width and interval_score.</p></dd>
+<dt><code class="api-field-name">report</code> <span class="api-field-type">dict of str to float</span></dt><dd><p>Keys are r2, mae, mse, coverage, lower_miss_rate, upper_miss_rate, mean_width, normalized_mean_width and interval_score. Normalized width divides mean width by the unweighted test-target IQR and is infinite when that IQR is zero. Tail miss rates are empirical diagnostics; for asymmetric intervals compare each with alpha / 2, allowing for finite test-sample variation.</p></dd>
 </dl>
 
 #### Raises
