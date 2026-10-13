@@ -7,6 +7,8 @@
 Will a parcel arrive within 48 hours? A point estimate of 46 hours looks reassuring, but an interval spanning 40–52 hours exposes uncertainty around the deadline. This example simulates delivery times in hours from distance and parcel weight; it needs no downloaded dataset.
 
 ```python
+"""Run the synthetic regression interval example."""
+
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split

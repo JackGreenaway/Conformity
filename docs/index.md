@@ -28,7 +28,7 @@ Choose a target miscoverage rate without specifying a noise distribution. Keep o
 
 Split conformal coverage is marginal over exchangeable calibration and future observations. It does not promise coverage for every individual, subgroup, or time period. Keep calibration observations out of model fitting, learned preprocessing, hyperparameter selection, and score-method selection. Distribution shift and dependent time-series data need a different justification.
 
-Regression currently provides symmetric, constant-width, single-output intervals. Classification requires valid `predict_proba` output and uses LAC or deterministic APS; empty sets are valid outcomes. Tiny calibration sets can require infinite intervals or all-class sets.
+Regression provides symmetric or separately calibrated asymmetric, constant-correction, single-output intervals. Classification requires valid `predict_proba` output and uses LAC or deterministic APS; empty sets are valid outcomes. Tiny calibration sets can require infinite intervals or all-class sets.
 
 Read [calibration and limitations](user-guide/calibration.md) before using the results to make decisions. The [original documentation](legacy/README.md), [API guide](legacy/DOCUMENTATION.md), and [statistical specification](legacy/THEORY.md) remain available in full.
 

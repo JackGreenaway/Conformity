@@ -20,7 +20,7 @@ pipe = Pipeline([
     ("conformal", ConformalRegressor(
         Ridge(),
         auto_calibrate=True,
-        random_state=42,
+        tts_kwargs={"random_state": 42},
     )),
 ])
 
@@ -37,8 +37,8 @@ The outer scaler fits on all observations passed to each pipeline fit, including
 
 ## Lifecycle
 
-1. Construct `ConformalRegressor(estimator, *, auto_calibrate=True, tts_kwargs=None, calibration_size=0.2, random_state=None)` or `ConformalClassifier(estimator, *, method="lac", auto_calibrate=True, tts_kwargs=None, calibration_size=0.2, random_state=None)`.
-2. `fit(X, y, auto_calibrate=None, tts_kwargs=None, *, sample_weight=None, **fit_params)` validates inputs, discards stale fitted/calibration state, clones the estimator, and fits it. With automatic calibration, splitting happens before the wrapped estimator is fitted. Constructor defaults are merged with `tts_kwargs`. Unqualified and step-qualified `*__sample_weight` vectors are validated and sliced to the training partition. Other metadata is forwarded unchanged; unqualified weights are not automatically routed into a pipeline.
+1. Construct `ConformalRegressor(estimator, *, auto_calibrate=True, tts_kwargs=None)` or `ConformalClassifier(estimator, *, method="lac", auto_calibrate=True, tts_kwargs=None)`.
+2. `fit(X, y, auto_calibrate=None, tts_kwargs=None, *, sample_weight=None, **fit_params)` validates inputs, discards stale fitted/calibration state, clones the estimator, and fits it. With automatic calibration, splitting happens before the wrapped estimator is fitted. `tts_kwargs` accepts typed `train_test_split` options; defaults are `test_size=0.2`, `train_size=None`, `random_state=None`, `shuffle=True`, and `stratify=None`. Set `random_state` inside `tts_kwargs` for reproducible splits. A fit-time mapping replaces the constructor mapping. Unqualified and step-qualified `*__sample_weight` vectors are validated and sliced to the training partition. Other metadata is forwarded unchanged; unqualified weights are not automatically routed into a pipeline.
 3. `calibrate(X, y)` validates the feature schema and targets and replaces calibration scores. Invalid calibration inputs leave previous valid scores intact. Calibration data must be independent of fitting and tuning.
 4. `predict_point(X)` and `score(X, y, sample_weight=None)` need fitting only. Classification also exposes `predict_proba(X)`.
 5. `predict_interval(X, alpha=0.05)` or `predict_set(X, alpha=0.05)` needs calibration. Alpha must be a finite scalar strictly between zero and one. Boolean sets use `classes_` order.
@@ -89,8 +89,7 @@ Both wrappers require `estimator` as their only positional parameter. All other 
 | -------------------------- | ------------- | ----------------------------------------------------------------------------------------- |
 | `estimator`                | Required      | Model, complete Pipeline, or search estimator to clone and fit                            |
 | `auto_calibrate`           | `True`       | Reserve calibration observations during ordinary `fit`                                    |
-| `tts_kwargs`               | `None`        | `train_test_split` options; overrides `calibration_size` and `random_state` when supplied |
-| `calibration_size`         | `0.2`         | Calibration fraction or count, using sklearn `test_size` semantics                        |
+| `tts_kwargs`               | `None`        | Typed `train_test_split` options; `test_size` defaults to `0.2`                             |
 | `random_state`             | `None`        | Split seed; does not change the underlying model's seed                                   |
 | `method` (classifier only) | `"lac"`       | `"lac"` or deterministic cumulative-score `"aps"`                                         |
 
@@ -132,7 +131,7 @@ from conformity import ConformalRegressor
 pipe = Pipeline([
     ("scaler", StandardScaler()),
     ("conformal", ConformalRegressor(
-        Ridge(), auto_calibrate=True, random_state=42
+        Ridge(), auto_calibrate=True, tts_kwargs={"random_state": 42}
     )),
 ])
 results = cross_validate(pipe, X, y, cv=5, scoring="r2")

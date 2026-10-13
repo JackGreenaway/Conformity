@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 from sklearn.datasets import make_regression
+from sklearn.dummy import DummyRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 
@@ -63,6 +64,41 @@ def test_predict_interval_shape(
     assert y_pred.shape[0] == X_test.shape[0]
     assert intervals.shape == (X_test.shape[0], 2)
     assert hasattr(reg, "q_level_")
+
+
+def test_asymmetric_method_uses_separate_one_sided_corrections() -> None:
+    """Calibrate unequal lower/upper corrections while preserving the default."""
+    X_fit = np.array([[0.0], [1.0]])
+    y_fit = np.zeros(2)
+    X_calib = np.zeros((19, 1))
+    y_calib = np.array([1.0] * 15 + [-10.0] * 4)
+
+    asymmetric = ConformalRegressor(
+        DummyRegressor(strategy="constant", constant=0),
+        auto_calibrate=False,
+        interval_method="asymmetric",
+    ).fit(X_fit, y_fit)
+    asymmetric.calibrate(X_calib, y_calib)
+    np.testing.assert_array_equal(
+        asymmetric.predict_interval([[0.0]], alpha=0.2), [[-10.0, 1.0]]
+    )
+    assert asymmetric.lower_q_level_ == 10.0
+    assert asymmetric.upper_q_level_ == 1.0
+
+    symmetric = ConformalRegressor(
+        DummyRegressor(strategy="constant", constant=0), auto_calibrate=False
+    ).fit(X_fit, y_fit)
+    symmetric.calibrate(X_calib, y_calib)
+    np.testing.assert_array_equal(
+        symmetric.predict_interval([[0.0]], alpha=0.2), [[-10.0, 10.0]]
+    )
+
+
+def test_asymmetric_method_rejects_unknown_interval_method() -> None:
+    """Reject interval methods outside the documented choices when fitting."""
+    model = ConformalRegressor(LinearRegression(), interval_method="quantile")
+    with pytest.raises(ValueError, match="interval_method"):
+        model.fit([[0.0], [1.0]], [0.0, 1.0])
 
 
 def test_predict_without_calibration_raises(

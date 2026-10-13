@@ -30,8 +30,8 @@ Put task walkthroughs in getting started and the examples gallery, reusable expl
 
 ### Example conventions
 
-- Use `Pipeline` with explicit, meaningful step names rather than `make_pipeline`. Prefer a wrapper around the final model and manual calibration held out before fitting learned preprocessing.
-- Explain any whole-pipeline wrapper at the example itself: use it when automatic calibration must split before learned preprocessing or tuning. A final-step wrapper with automatic calibration is safe for preceding stateless or independently fixed transformations under the same sampling assumptions. Link to [pipeline placement](user-guide/estimators.md#why-the-split-matters) for the details.
+- Use `Pipeline` with explicit, meaningful step names rather than `make_pipeline`. Prefer wrapping the whole pipeline when calibration is automatic, so the split precedes learned preprocessing and tuning.
+- A final-step wrapper is appropriate when calibration is manually held out before fitting learned preprocessing, or when preceding transformations are stateless or independently fixed. Explain the placement at the example and link to [pipeline placement](user-guide/estimators.md#why-the-split-matters).
 - Show where training, calibration and test rows come from. Keep final calibration independent of preprocessing fitting, model fitting and model selection. State any departure from the usual exchangeability assumptions; computational support alone is not a coverage guarantee.
 - For final-step wrappers, transform held-out features with the fitted pipeline prefix before calling custom wrapper methods. Use the full pipeline for `predict` so preprocessing is applied consistently.
 - Make current Python blocks independently runnable: include imports, deterministic synthetic data or a bundled dataset, and fixed seeds where random choices affect results. Avoid network downloads and dependence on earlier blocks. Archived guides retain their documented page-level execution fixture.
@@ -41,6 +41,37 @@ Put task walkthroughs in getting started and the examples gallery, reusable expl
 ### API docstrings
 
 Use the existing NumPy-style sections and document parameters, return values, relevant errors, fitted attributes and a short executable `Examples` transcript. State defaults, accepted shapes, fitted/calibrated prerequisites, and any state invalidation or replacement behavior. Keep signatures and behavior consistent with the implementation. Update the source docstring first, then regenerate the API reference so the site and source doctests share one contract.
+
+### Writing Markdown pages
+
+Create pages under `docs/` and add their relative paths to the appropriate section of `mkdocs.yml`'s `nav`. Use one `#` heading for the page title, `##` headings for its main sections and `###` headings for subsections. Keep headings descriptive and stable: links to headings depend on their anchors. For a workflow page, use Question, Configuration choices, Results and interpretation, and Next steps as a starting structure.
+
+Use backticks for identifiers such as `tts_kwargs`, fenced code blocks with a language such as `python`, `pycon` or `bash`, and blank lines around blocks, lists and tables. A `python` block is executed as a standalone script by the documentation checker; a `pycon` block is a doctest transcript whose displayed output must match execution. Use `text` for ordinary captured output. Do not put incomplete Python fragments in executable blocks.
+
+Link to other pages relative to the current Markdown file, for example `[Calibration](user-guide/calibration.md)` from this page or `[Calibration](calibration.md)` from another user-guide page. Append `#heading-anchor` for a section link. Avoid site-root paths such as `/user-guide/`: they bypass the GitHub Pages `/Conformity/` prefix. Store images under `docs/` near their page or in an assets directory, use relative image paths, and include meaningful alternative text.
+
+Write inline mathematics between `$` delimiters and display equations between `$$` delimiters on separate lines. Define symbols and units in the surrounding prose. Use standard Markdown tables for comparisons and the existing theme for layout. Check narrow screens and both color modes; avoid fixed-width content, color-only explanations and custom styles that assume a light background.
+
+### Authoring workflow
+
+After setting up the checkout environment above, start the preview and keep it running while editing:
+
+```bash
+uv run --locked --group docs --python 3.12 mkdocs serve
+```
+
+Open the local URL printed by MkDocs; it rebuilds when documentation files change. Edit explanatory pages directly, but edit `src/conformity/` docstrings for generated API content. Leave the marked generated reference regions alone. When examples or docstrings change, refresh their derived files and then verify them:
+
+```bash
+uv run --locked --group docs --python 3.12 python scripts/build_api_reference.py
+uv run --locked --group docs --python 3.12 python scripts/check_docs.py --format
+uv run --locked --group docs --python 3.12 python scripts/build_api_reference.py --check
+uv run --locked --group docs --python 3.12 python scripts/check_docs.py
+uv run --locked --group docs --python 3.12 mkdocs build --strict
+uv run --locked --group docs --python 3.12 python scripts/check_site_links.py
+```
+
+Review the diff, including generated references, gallery downloads and captured results. Commit source pages and their derived files together; `site/` is an ignored local build artifact. These commands preview and validate documentation locally without publishing it.
 
 ### Review and validation
 

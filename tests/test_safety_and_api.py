@@ -208,7 +208,9 @@ def test_sparse_auto_calibration_and_original_estimator_untouched() -> None:
     y = np.arange(40, dtype=float)
     estimator = LinearRegression()
     reg = ConformalRegressor(
-        estimator, random_state=7, calibration_size=0.25, auto_calibrate=False
+        estimator,
+        tts_kwargs={"test_size": 0.25, "random_state": 7},
+        auto_calibrate=False,
     )
     reg.fit(X, y, auto_calibrate=True, sample_weight=np.ones(40))
     assert reg.n_calibration_ == 10
@@ -227,7 +229,9 @@ def test_reproducible_split_and_training_weight_alignment() -> None:
     y = np.sin(X[:, 0])
     weight = np.arange(1, 101)
     objects = [
-        ConformalRegressor(LinearRegression(), random_state=42, auto_calibrate=False)
+        ConformalRegressor(
+            LinearRegression(), tts_kwargs={"random_state": 42}, auto_calibrate=False
+        )
         for _ in range(2)
     ]
     for obj in objects:
@@ -345,9 +349,9 @@ def test_dataframe_column_selecting_pipeline() -> tuple[
     pipeline = make_pipeline(
         ColumnTransformer([("a", StandardScaler(), ["a"])]), LinearRegression()
     )
-    reg = ConformalRegressor(pipeline, random_state=0, auto_calibrate=False).fit(
-        X, y, auto_calibrate=True
-    )
+    reg = ConformalRegressor(
+        pipeline, tts_kwargs={"random_state": 0}, auto_calibrate=False
+    ).fit(X, y, auto_calibrate=True)
     assert reg.predict_interval(X.iloc[:2], alpha=0.2).shape == (2, 2)
     with pytest.raises(ValueError, match="feature names"):
         reg.predict_point(X[["b", "a"]])

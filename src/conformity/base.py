@@ -5,7 +5,7 @@ from __future__ import annotations
 import warnings
 from abc import ABC, abstractmethod
 from numbers import Real
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -15,7 +15,9 @@ from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
 from typing_extensions import Self
 
-from ._typing import FeatureMatrix
+from ._typing import FeatureMatrix, TrainTestSplitKwargs
+
+DEFAULT_CALIBRATION_TEST_SIZE: float = 0.2
 
 
 def validate_alpha(alpha: float) -> float:
@@ -45,7 +47,9 @@ class BaseConformalPredictor(BaseEstimator, ABC):
     """Wrap a cloned estimator with held-out, unweighted split calibration.
 
     Predictions follow the sklearn point-prediction contract.
-    ``calibration_size`` and ``random_state`` control automatic splitting.
+    ``tts_kwargs`` controls automatic splitting. By default,
+    ``train_test_split`` reserves 20% of fit data for calibration, shuffles the
+    rows, and does not stratify.
     For a final-step wrapper, hold out calibration before fitting the Pipeline
     and calibrate on features transformed by its fitted preprocessing steps.
     With automatic splitting, wrap the whole Pipeline to exclude calibration
@@ -81,9 +85,9 @@ class BaseConformalPredictor(BaseEstimator, ABC):
     >>> from conformity import BaseConformalPredictor, ConformalRegressor
     >>> issubclass(ConformalRegressor, BaseConformalPredictor)
     True
-    >>> model = ConformalRegressor(Ridge(), calibration_size=0.25)
-    >>> model.get_params()["calibration_size"]
-    0.25
+    >>> model = ConformalRegressor(Ridge(), tts_kwargs={"test_size": 0.25})
+    >>> model.get_params()["tts_kwargs"]
+    {'test_size': 0.25}
     >>> model.is_calibrated_
     False
     """
@@ -105,9 +109,7 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         estimator: BaseEstimator,
         *,
         auto_calibrate: bool = True,
-        tts_kwargs: Optional[dict[str, Any]] = None,
-        calibration_size: Union[float, int] = 0.2,
-        random_state: Optional[Union[int, np.random.RandomState]] = None,
+        tts_kwargs: Optional[TrainTestSplitKwargs] = None,
     ) -> None:
         """Configure the wrapped estimator and held-out calibration workflow.
 
@@ -117,18 +119,14 @@ class BaseConformalPredictor(BaseEstimator, ABC):
             Cloneable sklearn estimator; classifiers also require predict_proba.
         auto_calibrate : bool
             Reserve held-out calibration data during fit; defaults to True.
-        tts_kwargs : dict or None
-            Optional train_test_split overrides, applied only with auto_calibrate.
-        calibration_size : float or int
-            Calibration fraction or sample count; defaults to 0.2.
-        random_state : int, RandomState or None
-            Seed or RandomState for reproducible automatic splits.
+        tts_kwargs : TrainTestSplitKwargs or None
+            train_test_split options used for automatic calibration. By default,
+            test_size is 0.2, shuffle is True, and stratify is None. An explicit
+            test_size here overrides the default.
         """
         self.estimator = estimator
         self.auto_calibrate = auto_calibrate
         self.tts_kwargs = tts_kwargs
-        self.calibration_size = calibration_size
-        self.random_state = random_state
 
     def __sklearn_tags__(self) -> Tags:
         """Advertise sparse input support to sklearn validation and tooling."""
@@ -190,7 +188,7 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         X: FeatureMatrix,
         y: ArrayLike,
         auto_calibrate: Optional[bool] = None,
-        tts_kwargs: Optional[dict[str, Any]] = None,
+        tts_kwargs: Optional[TrainTestSplitKwargs] = None,
         *,
         sample_weight: Optional[ArrayLike] = None,
         **fit_params: Any,
@@ -210,8 +208,12 @@ class BaseConformalPredictor(BaseEstimator, ABC):
             One target per sample; classification labels follow the fitted classes.
         auto_calibrate : bool or None
             Reserve an independent calibration split when fitting.
-        tts_kwargs : dict or None
-            Optional train_test_split overrides; requires automatic calibration.
+        tts_kwargs : TrainTestSplitKwargs or None
+            train_test_split options for this fit; requires automatic calibration.
+            If provided, this mapping replaces the constructor mapping. Missing
+            options use defaults: test_size=0.2, train_size=None, random_state=None,
+            shuffle=True and stratify=None. Set ``random_state`` here for
+            reproducible automatic splits.
         sample_weight : array-like of shape (n_samples,) or None
             Optional finite, nonnegative weights; fitting or evaluation only, never calibration.
         **fit_params : dict
@@ -274,8 +276,11 @@ class BaseConformalPredictor(BaseEstimator, ABC):
             weight_params[name] = weights
         if auto_calibrate:
             options = {
-                "test_size": self.calibration_size,
-                "random_state": self.random_state,
+                "test_size": DEFAULT_CALIBRATION_TEST_SIZE,
+                "train_size": None,
+                "random_state": None,
+                "shuffle": True,
+                "stratify": None,
             }
             options.update(tts_kwargs or {})
             # Split indices to retain DataFrame column names and slice weights.

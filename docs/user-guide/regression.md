@@ -2,9 +2,11 @@
 
 ## When to use ConformalRegressor
 
-Use it for one numeric target when symmetric residual intervals are an acceptable summary. The wrapped estimator must implement `fit` and return one finite value per sample from `predict`.
+Use it for one numeric target. The wrapped estimator must implement `fit` and return one finite value per sample from `predict`. The default `interval_method="symmetric"` uses one residual quantile for equal lower and upper corrections. Set `interval_method="asymmetric"` to calibrate the two sides separately.
 
-Calibration stores absolute residuals. For miscoverage $\alpha$, the threshold $q$ is the finite-sample order statistic and a prediction region is $[\hat y-q, \hat y+q]$.
+With the default symmetric method, calibration stores absolute residuals. For miscoverage $\alpha$, the threshold $q$ is the finite-sample order statistic and a prediction region is $[\hat y-q, \hat y+q]$.
+
+The asymmetric method stores signed residuals. It selects a lower and upper correction using a one-sided conformal quantile at miscoverage $\alpha/2$ for each tail, then returns $[\hat y-q_{\mathrm{lower}},\ \hat y+q_{\mathrm{upper}}]$. A union bound gives marginal coverage of at least $1-\alpha$ under exchangeability. The tail allocation is fixed at equal halves; this method does not estimate conditional coverage or adapt width to each input.
 
 | Task | Method | Result |
 | --- | --- | --- |
@@ -13,9 +15,34 @@ Calibration stores absolute residuals. For miscoverage $\alpha$, the threshold $
 | Get both | `predict(X, alpha, return_interval=True)` | `(points, intervals)` |
 | Measure uncertainty quality | `evaluate(X, y, alpha)` | R², MAE, MSE, coverage, width, interval score |
 
+```python
+from sklearn.datasets import make_regression
+from sklearn.linear_model import Ridge
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+
+from conformity import ConformalRegressor
+
+X, y = make_regression(n_samples=500, n_features=4, noise=10, random_state=12)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=13
+)
+model = ConformalRegressor(
+    Pipeline([("scale", StandardScaler()), ("ridge", Ridge())]),
+    interval_method="asymmetric",
+    tts_kwargs={"random_state": 0},
+)
+model.fit(X_train, y_train)  # automatic split happens before pipeline fitting
+points, intervals = model.predict(X_test, alpha=0.1, return_interval=True)
+assert intervals.shape == (len(X_test), 2)
+```
+
+For the asymmetric method, each calibration tail uses the corrected rank $\lceil(n+1)(1-\alpha/2)\rceil$. A finite correction therefore requires $\alpha \geq 2/(n+1)$; otherwise the corresponding bound is infinite.
+
 ## Limitations and choices
 
-The interval width is constant across rows at a fixed alpha. This is not a quantile regression method, does not support multi-output targets, and does not guarantee conditional coverage in heteroscedastic data. Very small alpha with too few calibration samples yields infinite bounds rather than a falsely narrow interval.
+Both methods produce fixed corrections across rows at a fixed alpha; only the asymmetric method allows the lower and upper correction sizes to differ. Neither is quantile regression or supports multi-output targets, and neither guarantees conditional coverage in heteroscedastic data. Too few calibration samples yield infinite bounds rather than a falsely narrow interval.
 
 Ordinary `score` is R² and uses point predictions; it does not evaluate interval quality. Match the interval score's alpha to the alpha used for prediction. Compare models at the same alpha using both coverage and width.
 

@@ -22,11 +22,15 @@ def test_constructor_calibration_and_fit_override(classification: bool) -> None:
     if classification:
         X, y = make_classification(n_samples=100, random_state=0)
         model = ConformalClassifier(
-            LogisticRegression(max_iter=500), auto_calibrate=True, random_state=0
+            LogisticRegression(max_iter=500),
+            auto_calibrate=True,
+            tts_kwargs={"random_state": 0},
         )
     else:
         X, y = make_regression(n_samples=100, random_state=0)
-        model = ConformalRegressor(Ridge(), auto_calibrate=True, random_state=0)
+        model = ConformalRegressor(
+            Ridge(), auto_calibrate=True, tts_kwargs={"random_state": 0}
+        )
     fitted = clone(model).fit(X, y)
     assert fitted.n_calibration_ == 20
     fitted.fit(X, y, auto_calibrate=False)
@@ -40,7 +44,7 @@ def test_internal_search_excludes_calibration_from_preprocessing_and_cv() -> Non
         make_pipeline(StandardScaler(), Ridge()), {"ridge__alpha": [0.1, 1.0]}, cv=3
     )
     model = ConformalRegressor(
-        search, auto_calibrate=True, tts_kwargs={"test_size": 0.3}, random_state=0
+        search, auto_calibrate=True, tts_kwargs={"test_size": 0.3, "random_state": 0}
     )
     model.fit(X, y)
     assert model.n_calibration_ == 30
@@ -49,9 +53,21 @@ def test_internal_search_excludes_calibration_from_preprocessing_and_cv() -> Non
     assert not hasattr(search, "best_estimator_")
     assert model.predict_interval(X[:5]).shape == (5, 2)
     assert np.isfinite(model.predict_point(X[:5])).all()
-    assert model.tts_kwargs == {"test_size": 0.3}
+    assert model.tts_kwargs == {"test_size": 0.3, "random_state": 0}
     model.fit(X, y, tts_kwargs={"test_size": 0.4})
     assert model.n_calibration_ == 40
+
+
+def test_default_split_options_reserve_twenty_percent() -> None:
+    """The documented default reserves 20% and no longer exposes calibration_size."""
+    X, y = make_regression(n_samples=100, n_features=3, random_state=11)
+    model = ConformalRegressor(Ridge())
+
+    assert model.get_params()["tts_kwargs"] is None
+    assert "random_state" not in model.get_params()
+    assert "calibration_size" not in model.get_params()
+    model.fit(X, y)
+    assert model.n_calibration_ == 20
 
 
 def test_outer_pipeline_predictions_use_fitted_preprocessing() -> None:
@@ -87,7 +103,7 @@ def test_pipeline_qualified_weights_follow_internal_training_split(
         wrapper = ConformalRegressor
         weight_name = "ridge__sample_weight"
     weights = np.arange(1, 101, dtype=float)
-    model = wrapper(estimator, auto_calibrate=True, random_state=7).fit(
+    model = wrapper(estimator, auto_calibrate=True, tts_kwargs={"random_state": 7}).fit(
         X, y, **{weight_name: weights}
     )
     train, _ = train_test_split(np.arange(100), test_size=0.2, random_state=7)
@@ -140,12 +156,16 @@ def test_cross_validate_final_wrapper_auto_calibrates_each_fold(
     if classification:
         X, y = make_classification(n_samples=120, random_state=0)
         inner = make_pipeline(StandardScaler(), LogisticRegression(max_iter=500))
-        control = ConformalClassifier(inner, auto_calibrate=True, random_state=7)
+        control = ConformalClassifier(
+            inner, auto_calibrate=True, tts_kwargs={"random_state": 7}
+        )
         scoring = "accuracy"
     else:
         X, y = make_regression(n_samples=120, noise=10, random_state=0)
         inner = make_pipeline(StandardScaler(), Ridge())
-        control = ConformalRegressor(inner, auto_calibrate=True, random_state=7)
+        control = ConformalRegressor(
+            inner, auto_calibrate=True, tts_kwargs={"random_state": 7}
+        )
         scoring = "neg_mean_absolute_error"
     pipe = Pipeline([("conformal", control)])
 
@@ -198,12 +218,14 @@ def test_cross_validate_with_preprocessing_before_final_wrapper(
         control = ConformalClassifier(
             LogisticRegression(max_iter=500),
             auto_calibrate=True,
-            random_state=7,
+            tts_kwargs={"random_state": 7},
         )
         scoring = "accuracy"
     else:
         X, y = make_regression(n_samples=120, noise=10, random_state=0)
-        control = ConformalRegressor(Ridge(), auto_calibrate=True, random_state=7)
+        control = ConformalRegressor(
+            Ridge(), auto_calibrate=True, tts_kwargs={"random_state": 7}
+        )
         scoring = "neg_mean_absolute_error"
     pipe = make_pipeline(StandardScaler(), control)
     result = cross_validate(
@@ -233,10 +255,12 @@ def test_default_workflow(classification: bool) -> None:
     """Ordinary fit calibrates and predict returns sklearn predictions by default."""
     if classification:
         X, y = make_classification(n_samples=100, random_state=0)
-        model = ConformalClassifier(LogisticRegression(max_iter=500), random_state=0)
+        model = ConformalClassifier(
+            LogisticRegression(max_iter=500), tts_kwargs={"random_state": 0}
+        )
     else:
         X, y = make_regression(n_samples=100, random_state=0)
-        model = ConformalRegressor(Ridge(), random_state=0)
+        model = ConformalRegressor(Ridge(), tts_kwargs={"random_state": 0})
     model.fit(X, y)
     assert model.n_calibration_ == 20
     assert model.predict(X[:5]).shape == (5,)

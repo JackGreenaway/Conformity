@@ -7,6 +7,7 @@ Choose a question before choosing a component. Every Python block in the new gui
 | How wide is uncertainty for a numeric prediction? | [Getting started](../getting-started.md) | Test coverage and mean width |
 | Does an interval cross a decision boundary? | [Regression decisions](regression.md) | Review count and interval score |
 | Which labels remain plausible? | [Classification review](classification.md) | Class mapping, coverage and set size |
+| What do intervals and sets look like? | [Visual examples](plots.md) | Held-out intervals and prediction set sizes |
 | Can I develop models with sklearn tools? | [Cross-validation](cross-validation.md) | Clone lifecycle and point scores |
 | Where are outcomes missed? | [Plotting](../plotting.md) | Predicted ranges and observed test targets |
 

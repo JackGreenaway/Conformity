@@ -42,7 +42,15 @@ $$
 C_\alpha(x) = [\hat f(x)-q,\ \hat f(x)+q].
 $$
 
-The model determines the center; held-out errors determine the radius. This implementation produces symmetric intervals with the same width for all inputs at a fixed alpha. It does not adapt interval width to changing noise across the feature space. See [regression intervals](user-guide/regression.md).
+The model determines the center; held-out errors determine the radius. This is the default `interval_method="symmetric"`: it produces symmetric intervals with the same width for all inputs at a fixed alpha. The optional `interval_method="asymmetric"` calibrates each side separately using the signed residuals
+
+$$
+S_{\mathrm{lower}}(x,y)=\hat f(x)-y,
+\qquad
+S_{\mathrm{upper}}(x,y)=y-\hat f(x).
+$$
+
+For each side, use the split-conformal corrected rank at miscoverage $\alpha/2$, and clip a negative correction to zero. The resulting interval is $[\hat f(x)-q_{\mathrm{lower}},\ \hat f(x)+q_{\mathrm{upper}}]$. Each one-sided event has miscoverage at most $\alpha/2$ by the finite-sample rank argument; the union bound therefore gives the interval marginal coverage of at least $1-\alpha$. No symmetry assumption on residuals is needed. The two corrections are constant across inputs, so this handles directional residual imbalance but does not adapt width to changing noise across the feature space. The finite correction requirement is $\alpha\geq 2/(n+1)$ for the asymmetric method. See [regression intervals](user-guide/regression.md).
 
 ### Classification: LAC and deterministic APS
 

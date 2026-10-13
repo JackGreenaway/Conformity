@@ -13,28 +13,63 @@
 
 Constructors retain configuration, `fit` trains a fresh clone, and `set_params` invalidates fitted and calibrated state. Point predictions work after fitting; uncertainty output needs calibration. `score` measures point performance. Fit and evaluation weights do not weight calibration.
 
-## Final-step wrapper and manual calibration
+## Recommended placement: wrap the complete pipeline
 
-Normally put the conformal wrapper on the final model, hold out calibration data before `Pipeline.fit`, and call `model[-1].calibrate(model[:-1].transform(X_calib), y_calib)`. See the [getting started example](../getting-started.md).
+When preprocessing learns from data and calibration is automatic, pass the entire preprocessing and prediction pipeline to the conformal wrapper. The wrapper then splits first, so calibration rows cannot affect the scaler, feature selector, model, or tuning step. This is the recommended default for `fit`-managed calibration and cross-validation.
+
+> **Notice:** Do not put a learned transformer before a final-step wrapper when relying on its automatic calibration split. The transformer fits before the wrapper can split, so it learns from calibration features and the usual split-conformal coverage argument no longer applies.
+
+The [getting started](../getting-started.md) and [classification](../examples/classification.md) examples use this placement. If you reserve calibration observations yourself before fitting, a final-step wrapper with manual calibration is also valid; see below.
+
+## Manual calibration with the complete pipeline
+
+The same full-pipeline wrapper works when you manage the calibration split yourself. Fit it only on training rows with `auto_calibrate=False`, then call `calibrate` on raw calibration features. Prediction and evaluation also take raw features; there is no need to index into the pipeline.
+
+```python
+import numpy as np
+from sklearn.linear_model import Ridge
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+
+from conformity import ConformalRegressor
+
+rng = np.random.default_rng(42)
+X = rng.normal(size=(200, 3))
+y = X[:, 0] + rng.normal(size=200)
+X_dev, X_test, y_dev, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+X_train, X_calib, y_train, y_calib = train_test_split(
+    X_dev, y_dev, test_size=0.25, random_state=2
+)
+model = ConformalRegressor(
+    Pipeline([("scaler", StandardScaler()), ("ridge", Ridge())]),
+    auto_calibrate=False,
+).fit(X_train, y_train)
+model.calibrate(X_calib, y_calib)
+points, intervals = model.predict(X_test, alpha=0.1, return_interval=True)
+report = model.evaluate(X_test, y_test, alpha=0.1)
+assert intervals.shape == (len(X_test), 2)
+print(report["coverage"], report["mean_width"])
+```
+
+This split has 120 training, 40 calibration and 40 test observations. All preprocessing is fitted on the training rows; `calibrate`, `predict` and `evaluate` each receive the original features.
 
 ### Why the split matters
 
 Calibration measures errors of an already fixed prediction procedure. That procedure includes learned preprocessing as well as the model: `StandardScaler`, for example, estimates means and variances from the rows passed to `fit`. Hold calibration rows out of all those fitting steps so their scores and a future observation's score can be treated exchangeably under the usual split-conformal assumptions. Keeping only calibration **targets** out of fitting is insufficient for this argument if preprocessing still learns from calibration **features**.
 
-With the wrapper on the final model, the sequence is: split training, calibration and test data; fit the pipeline on training data; transform calibration features with the fitted prefix; calibrate the final wrapper; predict through the full pipeline. This layout makes preprocessing ordinary named sklearn steps and gives you explicit control over the calibration partition. Use `auto_calibrate=False` because you have already made that partition; otherwise the wrapper also reserves part of the training split internally.
-
 | Situation | Placement and calibration | Why |
 | --- | --- | --- |
-| You can reserve calibration before fitting | `Pipeline` ending in a wrapped model, with manual calibration | Every learned step fits on training rows only, and you control the held-out partition. |
+| You can reserve calibration before fitting | Wrap the entire `Pipeline`, set `auto_calibrate=False`, then call `fit` and `calibrate` | Every learned step fits on training rows only, and you control the held-out partition. |
 | You need ordinary `fit` to create calibration automatically, including inside cross-validation folds | Wrap the entire `Pipeline`, with `auto_calibrate=True` | The wrapper splits before fitting any learned step. A final-step wrapper cannot control preceding transformers. |
 | Preceding transformations are stateless or fixed independently of calibration | A final-step wrapper can use automatic calibration | Those transformations learn nothing from the internal calibration rows. Future inputs must receive the same fixed transformation. |
 | You only need point predictions during development | Either placement supports sklearn point scoring | Successful point scoring does not establish a conformal coverage guarantee; reserve fresh calibration for the selected procedure. |
 
-Both placements can preserve the usual marginal coverage guarantee when used with the appropriate split and assumptions. Placement alone is not enough: neither layout fixes distribution shift, tuning on final calibration outcomes, or reusing training rows as calibration.
+Both a full-pipeline wrapper and a final-step wrapper can preserve the usual marginal coverage guarantee when used with the appropriate split and assumptions. Placement alone is not enough: neither layout fixes distribution shift, tuning on final calibration outcomes, or reusing training rows as calibration.
 
-### Calling methods on the final step
+### If a final-step wrapper is required
 
-`Pipeline.predict` passes inputs through preprocessing and forwards prediction options to the final wrapper with sklearn metadata routing disabled. Standard `Pipeline` does not expose the wrapper's custom `calibrate`, `evaluate`, `predict_interval`, or `predict_set` methods. Call these on `model.named_steps["conformal"]` after transforming inputs with `model[:-1].transform(...)`. Passing raw features directly to that wrapper would bypass preprocessing. For a wrapper around the whole pipeline, these methods accept raw features because its wrapped estimator performs the transformations.
+Standard `Pipeline` does not expose a final step's custom `calibrate`, `evaluate`, `predict_interval`, or `predict_set` methods. Those calls need transformed features passed to the final wrapper. Wrapping the complete pipeline avoids this extra plumbing: the conformal methods accept raw features and the wrapped pipeline performs the transformations.
 
 ## Whole-pipeline wrapper and automatic calibration
 
@@ -52,7 +87,7 @@ rng = np.random.default_rng(42)
 X = rng.normal(size=(200, 3))
 y = X[:, 0] + rng.normal(size=200)
 wrapped = Pipeline([("scaler", StandardScaler()), ("ridge", Ridge())])
-model = ConformalRegressor(wrapped, random_state=0).fit(X, y)
+model = ConformalRegressor(wrapped, tts_kwargs={"random_state": 0}).fit(X, y)
 assert not hasattr(wrapped[-1], "coef_")
 assert model.estimator_[0].n_samples_seen_ == 160
 assert model.n_calibration_ == 40

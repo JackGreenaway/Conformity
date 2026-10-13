@@ -18,7 +18,7 @@ pipe = Pipeline([
     ("conformal", ConformalRegressor(
         Ridge(),
         auto_calibrate=True,
-        random_state=42,
+        tts_kwargs={"random_state": 42},
     )),
 ])
 
@@ -85,7 +85,7 @@ For the true label these are super-uniform under the same assumptions: `P(p(X_ne
 
 ## Pipeline placement and selection
 
-When `fit` must create calibration automatically, use `ConformalRegressor(Pipeline([("scaler", StandardScaler()), ("ridge", Ridge())]), auto_calibrate=True, random_state=42)` and its classification equivalent. The whole-pipeline wrapper makes the internal split happen before every fitted pipeline step, excluding calibration from learned preprocessing. This is useful for ordinary sklearn fitting and per-fold automatic calibration. A final-step wrapper with manual calibration can satisfy the same coverage assumptions, as described below. Wrapping `GridSearchCV(Pipeline(...))` also keeps calibration out of tuning. Tuning a wrapper externally and then reusing its internal calibration split can introduce selection dependence; recalibrate on fresh held-out data.
+When `fit` must create calibration automatically, use `ConformalRegressor(Pipeline([("scaler", StandardScaler()), ("ridge", Ridge())]), auto_calibrate=True, tts_kwargs={"random_state": 42})` and its classification equivalent. The whole-pipeline wrapper makes the internal split happen before every fitted pipeline step, excluding calibration from learned preprocessing. This is useful for ordinary sklearn fitting and per-fold automatic calibration. A final-step wrapper with manual calibration can satisfy the same coverage assumptions, as described below. Wrapping `GridSearchCV(Pipeline(...))` also keeps calibration out of tuning. Tuning a wrapper externally and then reusing its internal calibration split can introduce selection dependence; recalibrate on fresh held-out data.
 
 An outer `Pipeline([("preprocessing", preprocessing), ("conformal", wrapper)])` is valid with manual calibration held out before `Pipeline.fit`: transform calibration features using the fitted prefix, then call the final wrapper's `calibrate`. Automatically splitting only inside the final wrapper allows preceding learned transformers to see calibration features. The standard proof above then does not apply. Stateless transformations are safe. Outcome stratification, ordered splitting and grouped sampling need assumptions appropriate to their sampling scheme; the default random, unstratified split avoids those extra requirements for iid data.
 

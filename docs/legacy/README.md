@@ -29,7 +29,7 @@ pipe = Pipeline([
     ("conformal", ConformalRegressor(
         Ridge(),
         auto_calibrate=True,
-        random_state=42,
+        tts_kwargs={"random_state": 42},
     )),
 ])
 
@@ -92,7 +92,7 @@ pipe = Pipeline([
         LogisticRegression(max_iter=1000),
         method="aps",  # or "lac" (default)
         auto_calibrate=True,
-        random_state=42,
+        tts_kwargs={"random_state": 42},
     )),
 ])
 results = cross_validate(pipe, X, y, cv=5, scoring="accuracy")
@@ -128,7 +128,7 @@ Both wrappers support cloning, nested estimator parameters, sparse CSR/CSC matri
 
 ## Controls and metrics
 
-Constructor options are `estimator`, `auto_calibrate`, `tts_kwargs`, `calibration_size`, `random_state`; classifiers additionally expose `method`. `fit(..., auto_calibrate=True, tts_kwargs={...})` accepts `train_test_split` options overriding the constructor defaults. Splitting is random and unstratified by default. Stratifying calibration by outcome can change the exchangeability assumptions; use it deliberately rather than relying on an automatic classification default.
+Constructor options are `estimator`, `auto_calibrate`, and `tts_kwargs`; classifiers additionally expose `method`. `tts_kwargs` accepts typed `train_test_split` options. Automatic calibration defaults to `test_size=0.2`, `train_size=None`, `random_state=None`, `shuffle=True`, and `stratify=None`. Set `random_state` inside `tts_kwargs` to reproduce a split. A fit-time `tts_kwargs` mapping replaces the constructor mapping. Stratifying calibration by outcome can change the exchangeability assumptions; use it deliberately rather than relying on an automatic classification default.
 
 `fit(..., sample_weight=weights, **fit_params)` forwards estimator fitting options. Sample weights are validated and split alongside training observations. Other fit parameters, except step-qualified sample weights, are passed unchanged: provide metadata aligned to the training partition, or split manually. Pipelines require step-qualified parameters such as `ridge__sample_weight`; these weight vectors are validated and automatically sliced too. Pass them with their estimator-relative step names. The unqualified `sample_weight` is forwarded as supplied; it is not automatically routed to a pipeline step. Calibration is unweighted.
 

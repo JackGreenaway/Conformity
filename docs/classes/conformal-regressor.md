@@ -5,29 +5,33 @@ Read more in the [User Guide](../user-guide/regression.md).
 <!-- BEGIN GENERATED REFERENCE -->
 ## Reference
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L17">[source]</a><pre><code><span class="api-keyword">class </span><span class="api-module">conformity.</span><span class="api-name">ConformalRegressor</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L18">[source]</a><pre><code><span class="api-keyword">class </span><span class="api-module">conformity.</span><span class="api-name">ConformalRegressor</span>(
     estimator,
     *,
     auto_calibrate=True,
     tts_kwargs=None,
-    calibration_size=0.2,
-    random_state=None,
+    interval_method=&#x27;symmetric&#x27;,
 )</code></pre></div>
 
 <div class="api-class-body" markdown="1">
 
-Symmetric absolute-residual prediction intervals for single-output regression.
+Split-conformal prediction intervals for single-output regression.
 
 ### Parameters
 
 <dl class="api-fields">
-<dt><code class="api-field-name">estimator</code> <span class="api-field-type">BaseEstimator</span></dt><dd><p>Cloneable sklearn estimator; classifiers also require predict_proba.</p></dd>
+<dt><code class="api-field-name">estimator</code> <span class="api-field-type">BaseEstimator</span></dt><dd><p>Cloneable sklearn regressor or preprocessing-and-regression pipeline.</p></dd>
 <dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">bool, default=True</span></dt><dd><p>Reserve held-out calibration data during fit; defaults to True.</p></dd>
-<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">dict or None, default=None</span></dt><dd><p>Optional train_test_split overrides, applied only with auto_calibrate.</p></dd>
-<dt><code class="api-field-name">calibration_size</code> <span class="api-field-type">float or int, default=0.2</span></dt><dd><p>Calibration fraction or sample count; defaults to 0.2.</p></dd>
-<dt><code class="api-field-name">random_state</code> <span class="api-field-type">int, RandomState or None, default=None</span></dt><dd><p>Seed or RandomState for reproducible automatic splits.</p></dd>
+<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">TrainTestSplitKwargs or None, default=None</span></dt><dd><p>train_test_split options for automatic calibration. By default, test_size=0.2, shuffle=True and stratify=None.</p></dd>
+<dt><code class="api-field-name">interval_method</code> <span class="api-field-type">{&quot;symmetric&quot;, &quot;asymmetric&quot;}, default=&#x27;symmetric&#x27;</span></dt><dd><p>Symmetric absolute-residual calibration (default), or separate signed residual quantiles with alpha / 2 allocated to each tail.</p></dd>
 </dl>
 
+### Attributes
+
+<dl class="api-fields">
+<dt><code class="api-field-name">lower_q_level_</code> <span class="api-field-type">float</span></dt><dd><p>Most recent lower correction for asymmetric intervals.</p></dd>
+<dt><code class="api-field-name">upper_q_level_</code> <span class="api-field-type">float</span></dt><dd><p>Most recent upper correction for asymmetric intervals.</p></dd>
+</dl>
 
 ### Attributes
 
@@ -63,16 +67,16 @@ Symmetric absolute-residual prediction intervals for single-output regression.
 >>> X_train, X_calib, y_train, y_calib = train_test_split(
 ...     X_dev, y_dev, test_size=1 / 3, random_state=2
 ... )
->>> model = Pipeline([
-...     ("scaler", StandardScaler()),
-...     ("conformal", ConformalRegressor(Ridge(), auto_calibrate=False)),
-... ])
+>>> model = ConformalRegressor(
+...     Pipeline([("scaler", StandardScaler()), ("ridge", Ridge())]),
+...     auto_calibrate=False,
+... )
 >>> _ = model.fit(X_train, y_train)
->>> _ = model[-1].calibrate(model[:-1].transform(X_calib), y_calib)
+>>> _ = model.calibrate(X_calib, y_calib)
 >>> points, intervals = model.predict(X_test, alpha=0.1, return_interval=True)
 >>> points.shape, intervals.shape
 ((30,), (30, 2))
->>> model[-1].n_calibration_
+>>> model.n_calibration_
 30
 ```
 
@@ -97,7 +101,7 @@ Symmetric absolute-residual prediction intervals for single-output regression.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L62">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">calibrate</span>(X, y)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L128">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">calibrate</span>(X, y)</code></pre></div>
 
 Replace held-out scores and return this predictor for method chaining.
 
@@ -127,7 +131,7 @@ Replace held-out scores and return this predictor for method chaining.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L216">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">evaluate</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L325">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">evaluate</span>(
     X,
     y,
     alpha=0.05,
@@ -166,7 +170,7 @@ Return point error, coverage, mean width, and interval score.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L188">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L186">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
     X,
     y,
     auto_calibrate=None,
@@ -184,7 +188,7 @@ Fit a fresh clone; optionally reserve an independent calibration split.
 <dt><code class="api-field-name">X</code> <span class="api-field-type">{array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)</span></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
 <dt><code class="api-field-name">y</code> <span class="api-field-type">array-like of shape (n_samples,)</span></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
 <dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">bool or None, default=None</span></dt><dd><p>Reserve an independent calibration split when fitting.</p></dd>
-<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">dict or None, default=None</span></dt><dd><p>Optional train_test_split overrides; requires automatic calibration.</p></dd>
+<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">TrainTestSplitKwargs or None, default=None</span></dt><dd><p>train_test_split options for this fit; requires automatic calibration. If provided, this mapping replaces the constructor mapping. Missing options use defaults: test_size=0.2, train_size=None, random_state=None, shuffle=True and stratify=None. Set <code>random_state</code> here for reproducible automatic splits.</p></dd>
 <dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">array-like of shape (n_samples,) or None, default=None</span></dt><dd><p>Optional finite, nonnegative weights; fitting or evaluation only, never calibration.</p></dd>
 <dt><code class="api-field-name">**fit_params</code> <span class="api-field-type">dict</span></dt><dd><p>Estimator-specific fit metadata forwarded to the cloned estimator.</p></dd>
 </dl>
@@ -246,7 +250,7 @@ Get parameters for this estimator.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L142">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L251">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict</span>(
     X,
     alpha=0.05,
     *,
@@ -283,7 +287,7 @@ Return points or (points, intervals).
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L112">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_interval</span>(X, alpha=0.05)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L221">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_interval</span>(X, alpha=0.05)</code></pre></div>
 
 Return [lower, upper] bounds with shape (n_samples, 2).
 
@@ -314,7 +318,7 @@ Return [lower, upper] bounds with shape (n_samples, 2).
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L89">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_point</span>(X)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L198">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_point</span>(X)</code></pre></div>
 
 Return point predictions without requiring calibration.
 
@@ -343,7 +347,7 @@ Return point predictions without requiring calibration.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L187">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">score</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/regressor.py#L296">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">score</span>(
     X,
     y,
     sample_weight=None,
@@ -407,7 +411,7 @@ Request metadata passed to the `fit` method.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L139">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L137">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
 
 Set sklearn parameters and invalidate fitted and calibrated state.
 

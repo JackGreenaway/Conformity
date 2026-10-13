@@ -35,6 +35,7 @@ nav:
       - Overview: examples/index.md
       - Regression decisions: examples/regression.md
       - Classification review: examples/classification.md
+      - Visual examples: examples/plots.md
       - Cross-validation: examples/cross-validation.md
   - Existing documentation:
       - Original workflows: legacy/README.md

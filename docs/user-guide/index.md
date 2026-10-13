@@ -8,8 +8,8 @@ coverage and usefulness on observations used by neither step.
    preprocessing placement and model selection.
 2. [Calibration and guarantees](calibration.md): held-out splits, exchangeability,
    finite-sample thresholds and the limits of marginal coverage.
-3. [Regression intervals](regression.md): absolute residual scores, symmetric
-   bounds and the tradeoff between coverage and width.
+3. [Regression intervals](regression.md): symmetric or asymmetric residual
+   corrections, marginal coverage and the tradeoff between coverage and width.
 4. [Classification sets](classification.md): LAC and deterministic APS,
    class ordering, p-values and ambiguous predictions.
 5. [Diagnostics and errors](diagnostics.md): coverage, efficiency, weights,

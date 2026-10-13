@@ -2,24 +2,39 @@
 
 from __future__ import annotations
 
-from typing import Optional, Union
+import warnings
+from typing import Literal, Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike
-from sklearn.base import RegressorMixin
+from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.metrics import r2_score
 from typing_extensions import Self
 
-from ._typing import FeatureMatrix, FloatArray
+from ._typing import FeatureMatrix, FloatArray, TrainTestSplitKwargs
 from .base import BaseConformalPredictor
 
 
 class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
-    """Symmetric absolute-residual prediction intervals for single-output regression.
+    """Split-conformal prediction intervals for single-output regression.
 
-    See BaseConformalPredictor for constructor and splitting options. Infinite
-    intervals are required when alpha < 1 / (n_calibration + 1). Coverage is
+    ``interval_method="symmetric"`` uses one absolute-residual quantile for
+    equal-width corrections. ``interval_method="asymmetric"`` calibrates
+    lower and upper signed residuals separately, allocating alpha / 2 to each
+    tail. By the union bound, the latter has marginal coverage at least
+    1 - alpha under exchangeability, with no symmetry assumption on residuals.
+
+    See BaseConformalPredictor for splitting options. Symmetric intervals
+    require alpha >= 1 / (n_calibration + 1) for a finite threshold; the
+    asymmetric method requires alpha >= 2 / (n_calibration + 1). Coverage is
     marginal under exchangeability, not conditional on each feature value.
+
+    Attributes
+    ----------
+    lower_q_level_ : float
+        Most recent lower correction for asymmetric intervals.
+    upper_q_level_ : float
+        Most recent upper correction for asymmetric intervals.
     Examples
     --------
     >>> from sklearn.datasets import make_regression
@@ -37,18 +52,69 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
     >>> X_train, X_calib, y_train, y_calib = train_test_split(
     ...     X_dev, y_dev, test_size=1 / 3, random_state=2
     ... )
-    >>> model = Pipeline([
-    ...     ("scaler", StandardScaler()),
-    ...     ("conformal", ConformalRegressor(Ridge(), auto_calibrate=False)),
-    ... ])
+    >>> model = ConformalRegressor(
+    ...     Pipeline([("scaler", StandardScaler()), ("ridge", Ridge())]),
+    ...     auto_calibrate=False,
+    ... )
     >>> _ = model.fit(X_train, y_train)
-    >>> _ = model[-1].calibrate(model[:-1].transform(X_calib), y_calib)
+    >>> _ = model.calibrate(X_calib, y_calib)
     >>> points, intervals = model.predict(X_test, alpha=0.1, return_interval=True)
     >>> points.shape, intervals.shape
     ((30,), (30, 2))
-    >>> model[-1].n_calibration_
+    >>> model.n_calibration_
     30
     """
+
+    def __init__(
+        self,
+        estimator: BaseEstimator,
+        *,
+        auto_calibrate: bool = True,
+        tts_kwargs: Optional[TrainTestSplitKwargs] = None,
+        interval_method: Literal["symmetric", "asymmetric"] = "symmetric",
+    ) -> None:
+        """Configure the regressor, split and interval calibration method.
+
+        Parameters
+        ----------
+        estimator : BaseEstimator
+            Cloneable sklearn regressor or preprocessing-and-regression pipeline.
+        auto_calibrate : bool
+            Reserve held-out calibration data during fit; defaults to True.
+        tts_kwargs : TrainTestSplitKwargs or None
+            train_test_split options for automatic calibration. By default,
+            test_size=0.2, shuffle=True and stratify=None.
+        interval_method : {"symmetric", "asymmetric"}
+            Symmetric absolute-residual calibration (default), or separate signed
+            residual quantiles with alpha / 2 allocated to each tail.
+
+        """
+        super().__init__(
+            estimator,
+            auto_calibrate=auto_calibrate,
+            tts_kwargs=tts_kwargs,
+        )
+        self.interval_method = interval_method
+
+    def _validate_estimator(self, estimator: BaseEstimator) -> None:
+        """Validate the shared estimator contract and interval configuration."""
+        super()._validate_estimator(estimator)
+        if not isinstance(self.interval_method, str) or self.interval_method not in (
+            "symmetric",
+            "asymmetric",
+        ):
+            raise ValueError("interval_method must be 'symmetric' or 'asymmetric'")
+
+    def _clear_calibration(self) -> None:
+        """Remove symmetric and one-sided calibration scores."""
+        super()._clear_calibration()
+        for name in (
+            "sorted_lower_calibration_scores_",
+            "sorted_upper_calibration_scores_",
+            "lower_q_level_",
+            "upper_q_level_",
+        ):
+            self.__dict__.pop(name, None)
 
     def _point(self, X: FeatureMatrix) -> FloatArray:
         """Validate one finite numeric prediction per input sample."""
@@ -83,8 +149,51 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
 
         """
         X, y = self._validate_calibration(X, y, numeric=True)
-        self._store_scores(np.abs(y - self._point(X)))
+        point = self._point(X)
+        self._store_scores(np.abs(y - point))
+        if self.interval_method == "asymmetric":
+            lower_scores = np.sort(point - y)
+            upper_scores = np.sort(y - point)
+            lower_scores.flags.writeable = False
+            upper_scores.flags.writeable = False
+            self.sorted_lower_calibration_scores_ = lower_scores
+            self.sorted_upper_calibration_scores_ = upper_scores
         return self
+
+    def _interval_thresholds(self, alpha: float) -> tuple[float, float]:
+        """Return lower and upper corrections with Bonferroni tail allocation."""
+        if self.interval_method == "symmetric":
+            threshold = self._threshold(alpha)
+            return threshold, threshold
+        from .base import validate_alpha
+
+        alpha = validate_alpha(alpha)
+        if not self.is_calibrated_:
+            raise RuntimeError(
+                "The estimator must be calibrated. Call calibrate with held-out data."
+            )
+        if not hasattr(self, "sorted_lower_calibration_scores_"):
+            raise RuntimeError("Calibration scores do not match interval_method")
+        rank = int(np.ceil((self.n_calibration_ + 1) * (1 - alpha / 2)))
+        self.alpha_used_ = alpha
+        self.quantile_level_ = rank / self.n_calibration_
+        if rank > self.n_calibration_:
+            warnings.warn(
+                "One-sided quantiles require infinite interval bounds: calibration "
+                "set is too small for alpha / 2.",
+                UserWarning,
+                stacklevel=2,
+            )
+            lower = upper = np.inf
+        else:
+            # A nonnegative correction keeps bounds ordered and only enlarges
+            # each one-sided set of covered observations.
+            lower = max(0.0, float(self.sorted_lower_calibration_scores_[rank - 1]))
+            upper = max(0.0, float(self.sorted_upper_calibration_scores_[rank - 1]))
+        self.lower_q_level_ = lower
+        self.upper_q_level_ = upper
+        self.q_level_ = max(lower, upper)
+        return lower, upper
 
     def predict_point(self, X: FeatureMatrix) -> FloatArray:
         """Return point predictions without requiring calibration.
@@ -135,9 +244,9 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
 
         """
         X = self._validate_X(X)
-        threshold = self._threshold(alpha)
+        lower, upper = self._interval_thresholds(alpha)
         point = self._point(X)
-        return np.column_stack((point - threshold, point + threshold))
+        return np.column_stack((point - lower, point + upper))
 
     def predict(
         self,
@@ -180,9 +289,9 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
         if not return_interval:
             return self.predict_point(X)
         X = self._validate_X(X)
-        threshold = self._threshold(alpha)
+        lower, upper = self._interval_thresholds(alpha)
         point = self._point(X)
-        return point, np.column_stack((point - threshold, point + threshold))
+        return point, np.column_stack((point - lower, point + upper))
 
     def score(
         self, X: FeatureMatrix, y: ArrayLike, sample_weight: Optional[ArrayLike] = None
@@ -258,9 +367,9 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
         )
 
         X = self._validate_X(X)
-        threshold = self._threshold(alpha)
+        lower, upper = self._interval_thresholds(alpha)
         point = self._point(X)
-        intervals = np.column_stack((point - threshold, point + threshold))
+        intervals = np.column_stack((point - lower, point + upper))
         return {
             "r2": r2_score(y, point, sample_weight=sample_weight),
             "mae": mean_absolute_error(y, point, sample_weight=sample_weight),

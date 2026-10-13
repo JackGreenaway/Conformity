@@ -10,7 +10,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.metrics import accuracy_score
 from typing_extensions import Self
 
-from ._typing import FeatureMatrix, FloatArray
+from ._typing import FeatureMatrix, FloatArray, TrainTestSplitKwargs
 from .base import BaseConformalPredictor
 
 
@@ -68,9 +68,7 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
         *,
         method: Literal["lac", "aps"] = "lac",
         auto_calibrate: bool = True,
-        tts_kwargs: Optional[dict[str, Any]] = None,
-        calibration_size: Union[float, int] = 0.2,
-        random_state: Optional[Union[int, np.random.RandomState]] = None,
+        tts_kwargs: Optional[TrainTestSplitKwargs] = None,
     ) -> None:
         """Configure the wrapped estimator and held-out calibration workflow.
 
@@ -82,19 +80,14 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
             Use lac (1 - probability) or aps (cumulative ranked probability).
         auto_calibrate : bool or None
             Reserve held-out calibration data during fit; defaults to True.
-        tts_kwargs : dict or None
-            Optional train_test_split overrides, applied only with auto_calibrate.
-        calibration_size : float or int
-            Calibration fraction or sample count; defaults to 0.2.
-        random_state : int, RandomState or None
-            Seed or RandomState for reproducible automatic splits.
+        tts_kwargs : TrainTestSplitKwargs or None
+            train_test_split options for automatic calibration. By default,
+            test_size=0.2, shuffle=True and stratify=None.
         """
         super().__init__(
             estimator,
             auto_calibrate=auto_calibrate,
             tts_kwargs=tts_kwargs,
-            calibration_size=calibration_size,
-            random_state=random_state,
         )
         self.method = method
 

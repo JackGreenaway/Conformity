@@ -92,7 +92,7 @@ X_all, y_all = make_regression(n_samples=1200, n_features=4, noise=20, random_st
 X, y = X_all[:1000], y_all[:1000]
 X_new = X_all[1000:1005]
 X_calib, y_calib = X_all[1005:], y_all[1005:]
-pipe = Pipeline([("scaler", StandardScaler()), ("conformal", ConformalRegressor(Ridge(), random_state=42))])
+pipe = Pipeline([("scaler", StandardScaler()), ("conformal", ConformalRegressor(Ridge(), tts_kwargs={"random_state": 42}))])
 """
     outputs = {}
     paths = [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]

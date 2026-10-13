@@ -42,6 +42,36 @@ def test_all_possible_future_ranks_obey_coverage_bound(
         assert sum(hits) == rank
 
 
+@pytest.mark.parametrize("alpha", [0.1, 0.2, 0.35, 0.5])
+@pytest.mark.parametrize(
+    "residuals",
+    [
+        [1] * 15 + [-10] * 5,
+        [-10, -8, -6, -4, -2] + list(range(1, 16)),
+    ],
+)
+def test_asymmetric_tail_ranks_obey_marginal_coverage_bound(
+    alpha: float, residuals: list[float]
+) -> None:
+    """Exhaustively check separate tail quantiles over every future index."""
+    residuals = np.asarray(residuals, dtype=float)
+    model = ConformalRegressor(
+        DummyRegressor(strategy="constant", constant=0),
+        auto_calibrate=False,
+        interval_method="asymmetric",
+    )
+    model.fit([[0], [1]], [0, 0])
+    hits = []
+    for future in range(len(residuals)):
+        calibration = np.delete(residuals, future)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            model.calibrate(np.zeros((len(calibration), 1)), calibration)
+            lower, upper = model.predict_interval([[0]], alpha=alpha)[0]
+        hits.append(lower <= residuals[future] <= upper)
+    assert np.mean(hits) >= 1 - alpha
+
+
 @pytest.mark.parametrize("method", ["lac", "aps"])
 @pytest.mark.parametrize("alpha", [0.01, 0.2, 0.35, 0.5, 0.8])
 def test_classification_rank_coverage_and_p_value_inversion(
