@@ -1,6 +1,8 @@
-# Examples gallery
+# Runnable examples
 
 Choose a question before choosing a component. Every Python block in the new guides is standalone and executed during validation; examples use synthetic data or local arrays and need no external downloads.
+
+Browse the [visual gallery](gallery.md) for diagrams and plots, or use the examples below to choose a runnable workflow.
 
 | Question | Example | What to inspect |
 | --- | --- | --- |

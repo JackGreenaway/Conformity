@@ -32,8 +32,8 @@ nav:
       - ConformalRegressor: classes/conformal-regressor.md
       - ConformalClassifier: classes/conformal-classifier.md
   - Examples:
-      - Overview: examples/index.md
-      - Visual gallery: examples/gallery.md
+      - Gallery: examples/gallery.md
+      - Runnable examples: examples/index.md
       - Regression decisions: examples/regression.md
       - Classification review: examples/classification.md
       - Visual examples: examples/plots.md
