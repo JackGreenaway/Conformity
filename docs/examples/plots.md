@@ -40,7 +40,7 @@ X_train, X_calib, y_train, y_calib = train_test_split(
 )
 order = np.argsort(X_test[:, 0])
 x = X_test[order, 0]
-fig, axes = plt.subplots(1, 2, figsize=(12, 4.5), sharey=True)
+fig, axes = plt.subplots(2, 1, figsize=(7, 8), sharey=True)
 for ax, method, title in zip(
     axes,
     ("symmetric", "asymmetric"),
@@ -107,7 +107,7 @@ coverage_by_class = prediction_set_coverage_by_class(
     y_test, membership, classes=classifier.classes_
 )
 
-fig, (scatter_ax, count_ax, coverage_ax) = plt.subplots(1, 3, figsize=(13, 4))
+fig, (scatter_ax, count_ax, coverage_ax) = plt.subplots(3, 1, figsize=(7, 9))
 for label, name in enumerate(("Class 0", "Class 1", "Class 2")):
     selected = y_test == label
     scatter_ax.scatter(
