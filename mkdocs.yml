@@ -33,6 +33,7 @@ nav:
       - ConformalClassifier: classes/conformal-classifier.md
   - Examples:
       - Overview: examples/index.md
+      - Visual gallery: examples/gallery.md
       - Regression decisions: examples/regression.md
       - Classification review: examples/classification.md
       - Visual examples: examples/plots.md
