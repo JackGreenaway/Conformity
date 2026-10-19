@@ -44,6 +44,13 @@ For the asymmetric method, each calibration tail uses the corrected rank $\lceil
 
 Both methods produce fixed corrections across rows at a fixed alpha; only the asymmetric method allows the lower and upper correction sizes to differ. Neither is quantile regression or supports multi-output targets, and neither guarantees conditional coverage in heteroscedastic data. Too few calibration samples yield infinite bounds rather than a falsely narrow interval.
 
+| Method | Advantages | Costs and limits |
+| --- | --- | --- |
+| Symmetric | One absolute-residual cutoff; equal-width corrections; finite bounds need $\alpha \geq 1/(n+1)$. | Cannot allocate more width to one tail; a large residual on either side widens both sides. |
+| Asymmetric | Separate lower and upper corrections can reflect directional residual imbalance and may improve width when that imbalance matters. | No promise of shorter width; tail corrections use the more extreme $\alpha/2$ rank and require $\alpha \geq 2/(n+1)$ for finite bounds; still constant across inputs. |
+
+Treat the choice as a modeling decision, not a guarantee of efficiency. Compare both at the same alpha on data kept separate from fitting and calibration. See the [theory guide](../theory.md#regression-absolute-residuals) for the score definitions and comparison plot.
+
 Ordinary `score` is R² and uses point predictions; it does not evaluate interval quality. Match the interval score's alpha to the alpha used for prediction. Compare models at the same alpha using coverage, width and interval score. For asymmetric intervals, inspect lower and upper miss rates separately against the nominal `alpha / 2` per tail; on finite test samples these rates vary, and for symmetric intervals the two tails are not controlled separately.
 
 ## Next steps

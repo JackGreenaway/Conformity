@@ -52,6 +52,12 @@ $$
 
 For each side, use the split-conformal corrected rank at miscoverage $\alpha/2$, and clip a negative correction to zero. The resulting interval is $[\hat f(x)-q_{\mathrm{lower}},\ \hat f(x)+q_{\mathrm{upper}}]$. Each one-sided event has miscoverage at most $\alpha/2$ by the finite-sample rank argument; the union bound therefore gives the interval marginal coverage of at least $1-\alpha$. No symmetry assumption on residuals is needed. The two corrections are constant across inputs, so this handles directional residual imbalance but does not adapt width to changing noise across the feature space. The finite correction requirement is $\alpha\geq 2/(n+1)$ for the asymmetric method. See [regression intervals](user-guide/regression.md).
 
+The asymmetric method has a tradeoff. Separate corrections can make a region more useful when residual errors are directionally unbalanced: one side can extend farther than the other instead of widening both sides equally. It does not guarantee a shorter interval. The total width is $q_{\mathrm{lower}}+q_{\mathrm{upper}}$, which may be either smaller or larger than the symmetric width $2q$. Both corrections remain fixed across inputs, so asymmetric intervals do not adapt to feature-dependent noise. Since each tail uses a more extreme $\alpha/2$ rank, a small calibration set is more likely to require infinite bounds. Compare methods on independent test data at the same alpha, using coverage together with width and interval score.
+
+![Illustration comparing a symmetric interval with one shared correction on both sides of the point prediction and an asymmetric interval with separate lower and upper corrections.](images/symmetric-asymmetric-intervals.png)
+
+*The plot compares the two constructions on the same held-out data. Asymmetry changes the allocation of interval width between tails; it does not promise narrower intervals or conditional coverage.*
+
 ### Classification: LAC and deterministic APS
 
 For class probabilities $\hat p_y(x)$, LAC uses
@@ -89,6 +95,59 @@ The prediction region is
 $$
 C_\alpha(x) = \{y : S(x,y)\le q\}.
 $$
+
+The plot below shows a calibration-score distribution and the selected cutoff. It uses synthetic absolute residuals so the calculation is easy to reproduce:
+
+```python
+import matplotlib.pyplot as plt
+import numpy as np
+
+rng = np.random.default_rng(42)
+n = 99
+alpha = 0.1
+calibration_scores = np.abs(rng.normal(size=n))
+rank = int(np.ceil((n + 1) * (1 - alpha)))
+threshold = float(np.sort(calibration_scores)[rank - 1])
+
+fig, ax = plt.subplots(figsize=(7.5, 4.5), constrained_layout=True)
+right_edge = float(calibration_scores.max()) + 0.25
+ax.axvspan(
+    threshold,
+    right_edge,
+    color="C3",
+    alpha=0.10,
+    label="Calibration scores above cutoff",
+)
+ax.hist(
+    calibration_scores,
+    bins=16,
+    color="C0",
+    edgecolor="white",
+    label="Calibration scores",
+)
+ax.axvline(
+    threshold,
+    color="C3",
+    linestyle="--",
+    linewidth=2,
+    label=f"Cutoff q = {threshold:.2f} (rank {rank}/{n})",
+)
+ax.set(
+    xlim=(0, right_edge),
+    xlabel="Absolute calibration residual",
+    ylabel="Number of observations",
+    title=f"Finite-sample cutoff (n={n}, alpha={alpha})",
+)
+ax.legend()
+fig.savefig("calibration-score-cutoff.png", dpi=140)
+plt.close(fig)
+```
+
+![Histogram of 99 synthetic absolute calibration residuals with a dashed vertical line at the corrected 90th order statistic and the scores above the cutoff shaded.](images/calibration-score-cutoff.png)
+
+Here $k=\lceil100\times0.90\rceil=90$, so the 90th sorted score is the cutoff. With distinct scores, 9 of the 99 calibration scores lie above it. The finite-sample coverage statement uses the rank among all $n+1$ scores, including the future score: the guarantee is at least $90/100=90\%$. It does not claim that exactly 90% of every future test batch will be covered.
+
+The rank illustration can also be worked by hand. With $n=9$ and $\alpha=0.20$, $k=\lceil10\times0.80\rceil=8$, so the eighth sorted score is the cutoff. At $\alpha=0.05$, $k=\lceil10\times0.95\rceil=10$, outside the observed ranks; the threshold is infinite. The smallest alpha yielding a finite symmetric cutoff is $1/(n+1)$.
 
 The correction uses **$n+1$**, because the future observation joins the $n$ calibration observations in the rank argument. A plain interpolated empirical quantile is not the same construction.
 

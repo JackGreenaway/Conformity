@@ -48,10 +48,20 @@ Let the fitted model be fixed and let `S(x, y)` be a nonconformity score, with l
 | Method                       | Score                                                      | Returned region                         |
 | ---------------------------- | ---------------------------------------------------------- | --------------------------------------- |
 | Absolute-residual regression | `abs(y - f(x))`                                            | `[f(x) - q, f(x) + q]`                  |
+| Asymmetric regression        | Lower: `f(x) - y`; upper: `y - f(x)`                      | `[f(x) - q_lower, f(x) + q_upper]`      |
 | LAC classification           | `1 - p_y(x)`                                               | Labels with `1 - p_y(x) <= q`           |
 | Deterministic APS            | Sum of probabilities through label `y` in descending order | Labels whose cumulative score is `<= q` |
 
 APS uses stable `classes_` order to break equal-probability ties, identically at calibration and prediction. This is a deterministic cumulative-score variant; it does not implement the randomized boundary rule in Romano, Sesia and Candès. It can produce empty sets. It need not include the first label crossing `q`. Probabilities need not be statistically calibrated for the rank guarantee; model quality affects set efficiency. Regression intervals have constant width at a given alpha and do not adapt to heteroscedasticity.
+
+The default symmetric regression method takes the corrected rank at miscoverage `alpha` over absolute residuals and uses that cutoff on both sides. The optional asymmetric method computes separate sorted score lists for `f(x) - y` and `y - f(x)`, then uses rank `ceil((n + 1) * (1 - alpha / 2))` for each side. Negative corrections are clipped to zero. By the one-sided rank argument, each tail miss probability is at most `alpha / 2`; the union bound gives marginal interval coverage of at least `1 - alpha` under the same exchangeability assumptions. Both corrections are constant across inputs.
+
+| Method | Advantages | Costs and limits |
+| --- | --- | --- |
+| Symmetric | One absolute-residual cutoff, equal-width corrections, and finite bounds when `alpha >= 1 / (n + 1)`. | A large residual on either side widens both sides; directional residual imbalance is not represented. |
+| Asymmetric | Different lower and upper corrections can reflect directional residual imbalance and may improve width when that imbalance matters. | It does not guarantee a shorter interval: total width is `q_lower + q_upper` and can be above or below `2 * q`. Its more extreme tail ranks require `alpha >= 2 / (n + 1)` for finite corrections; it still does not adapt to feature-dependent noise. |
+
+Choose between them using independent test data at the same alpha. Compare coverage with width and interval score; calibration validity alone does not select the more useful interval.
 
 ## Finite-sample rank argument
 
