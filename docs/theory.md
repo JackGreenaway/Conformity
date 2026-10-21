@@ -287,7 +287,7 @@ Simply retraining once on all available labeled observations does not make a spl
 
 In practice, a user would need to write a separate predictor around their estimator and score function. The following is Python-shaped pseudocode for classification; `score_rows` must compute the chosen nonconformity scores for every row under the same augmented fit:
 
-```python
+```text
 for x in X_test:
     prediction_set = []
     for candidate_label in classes:
