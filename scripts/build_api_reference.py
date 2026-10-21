@@ -19,6 +19,23 @@ CLASSES = {
 }
 START = "<!-- BEGIN GENERATED REFERENCE -->"
 END = "<!-- END GENERATED REFERENCE -->"
+METRIC_GROUPS = {
+    "Classification metrics": (
+        "prediction_set_coverage",
+        "prediction_set_coverage_by_class",
+        "prediction_set_size",
+        "prediction_set_empty_rate",
+        "prediction_set_singleton_rate",
+    ),
+    "Regression metrics": (
+        "prediction_interval_coverage",
+        "prediction_interval_lower_miss_rate",
+        "prediction_interval_upper_miss_rate",
+        "prediction_interval_width",
+        "normalized_prediction_interval_width",
+        "interval_score",
+    ),
+}
 
 
 def signature(obj: Callable[..., Any]) -> str:
@@ -188,6 +205,7 @@ def reference(cls: type) -> str:
     for method, obj in public_methods(cls).items():
         summary = (inspect.getdoc(obj) or "").splitlines()[0]
         output.append(f"| [{method}](#{method.replace('_', '-')}) | {summary} |")
+    output.append("")
     for method, obj in public_methods(cls).items():
         output.extend(
             [
@@ -231,22 +249,36 @@ def main() -> None:
             )
         if not args.check:
             path.write_text(updated)
-    api_path = ROOT / "docs" / "api.md"
+    api_path = ROOT / "docs" / "api" / "metrics.md"
     api = api_path.read_text()
     blocks = []
-    for name in conformity.__all__:
-        obj = getattr(conformity, name)
-        if inspect.isclass(obj):
-            continue
-        blocks.extend(
-            [
-                f"## {name} {{#{name.replace('_', '-')}}}\n",
-                signature_block(obj, name),
-                render_doc(
-                    inspect.getdoc(obj) or "", 3, include_examples=True, obj=obj
-                ),
-            ]
-        )
+    metric_pages = ROOT / "docs" / "api" / "metrics"
+    for group, names in METRIC_GROUPS.items():
+        blocks.append(f"## {group}\n")
+        blocks.append("| Metric | Purpose |\n| --- | --- |")
+        for name in names:
+            obj = getattr(conformity, name)
+            slug = name.replace("_", "-")
+            summary = (inspect.getdoc(obj) or "").split("\n\n", 1)[0].replace("\n", " ")
+            blocks.append(f"| [`{name}`](metrics/{slug}.md) | {summary} |")
+            page_path = metric_pages / f"{slug}.md"
+            page = (
+                f"# {name} {{#{slug}}}\n\n"
+                f"[Metrics overview](../metrics.md)\n\n"
+                f"{signature_block(obj, name)}\n"
+                f"{summary}\n\n"
+                f"{render_doc(inspect.getdoc(obj) or '', 2, include_summary=False, include_examples=True, obj=obj)}"
+            )
+            page = page.rstrip() + "\n"
+            if args.check:
+                if not page_path.exists() or page_path.read_text() != page:
+                    raise ValueError(
+                        f"Stale metric reference: {page_path}; run scripts/build_api_reference.py"
+                    )
+            else:
+                metric_pages.mkdir(parents=True, exist_ok=True)
+                page_path.write_text(page)
+        blocks.append("")
     generated = START + "\n" + "\n".join(blocks) + "\n" + END
     if START not in api or END not in api:
         raise ValueError("Missing API reference markers")

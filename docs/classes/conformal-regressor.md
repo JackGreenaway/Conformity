@@ -9,7 +9,7 @@ Read more in the [User Guide](../user-guide/regression.md).
     estimator,
     *,
     auto_calibrate=True,
-    tts_kwargs=None,
+    calibration_splitter=None,
     interval_method=&#x27;symmetric&#x27;,
 )</code></pre></div>
 
@@ -22,7 +22,7 @@ Split-conformal prediction intervals for single-output regression.
 <dl class="api-fields">
 <dt><code class="api-field-name">estimator</code> <span class="api-field-type">BaseEstimator</span></dt><dd><p>Cloneable sklearn regressor or preprocessing-and-regression pipeline.</p></dd>
 <dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">bool, default=True</span></dt><dd><p>Reserve held-out calibration data during fit; defaults to True.</p></dd>
-<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">TrainTestSplitKwargs or None, default=None</span></dt><dd><p>train_test_split options for automatic calibration. By default, test_size=0.2, shuffle=True and stratify=None.</p></dd>
+<dt><code class="api-field-name">calibration_splitter</code> <span class="api-field-type">object with split(X, y), or None, default=None</span></dt><dd><p>Splitter producing exactly one training/calibration split. Defaults to <code>ShuffleSplit(n_splits=1, test_size=0.2)</code>.</p></dd>
 <dt><code class="api-field-name">interval_method</code> <span class="api-field-type">{&quot;symmetric&quot;, &quot;asymmetric&quot;}, default=&#x27;symmetric&#x27;</span></dt><dd><p>Symmetric absolute-residual calibration (default), or separate signed residual quantiles with alpha / 2 allocated to each tail.</p></dd>
 </dl>
 
@@ -97,6 +97,7 @@ Split-conformal prediction intervals for single-output regression.
 | [set_params](#set-params) | Set sklearn parameters and invalidate fitted and calibrated state. |
 | [set_predict_request](#set-predict-request) | Request metadata passed to the ``predict`` method. |
 | [set_score_request](#set-score-request) | Request metadata passed to the ``score`` method. |
+
 ### calibrate {#calibrate .api-method-title}
 
 <div class="api-method-body" markdown="1">
@@ -170,11 +171,11 @@ Return point error, coverage, tail misses, width and interval score.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L186">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L187">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
     X,
     y,
     auto_calibrate=None,
-    tts_kwargs=None,
+    calibration_splitter=None,
     *,
     sample_weight=None,
     **fit_params,
@@ -188,7 +189,7 @@ Fit a fresh clone; optionally reserve an independent calibration split.
 <dt><code class="api-field-name">X</code> <span class="api-field-type">{array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)</span></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
 <dt><code class="api-field-name">y</code> <span class="api-field-type">array-like of shape (n_samples,)</span></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
 <dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">bool or None, default=None</span></dt><dd><p>Reserve an independent calibration split when fitting.</p></dd>
-<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">TrainTestSplitKwargs or None, default=None</span></dt><dd><p>train_test_split options for this fit; requires automatic calibration. If provided, this mapping replaces the constructor mapping. Missing options use defaults: test_size=0.2, train_size=None, random_state=None, shuffle=True and stratify=None. Set <code>random_state</code> here for reproducible automatic splits.</p></dd>
+<dt><code class="api-field-name">calibration_splitter</code> <span class="api-field-type">object with split(X, y), or None, default=None</span></dt><dd><p>Splitter for this fit; requires automatic calibration. A non-None value replaces the constructor splitter. It must produce exactly one training/calibration split. None uses the constructor value, or the default shuffled 80/20 split.</p></dd>
 <dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">array-like of shape (n_samples,) or None, default=None</span></dt><dd><p>Optional finite, nonnegative weights; fitting or evaluation only, never calibration.</p></dd>
 <dt><code class="api-field-name">**fit_params</code> <span class="api-field-type">dict</span></dt><dd><p>Estimator-specific fit metadata forwarded to the cloned estimator.</p></dd>
 </dl>
@@ -385,8 +386,8 @@ Return point-prediction R², using point predictions.
 <div class="api-signature"><a class="api-source" href="https://scikit-learn.org/stable/modules/generated/sklearn.base.BaseEstimator.html#sklearn.base.BaseEstimator.set_fit_request">[inherited API]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_fit_request</span>(
     *,
     auto_calibrate=&#x27;$UNCHANGED$&#x27;,
+    calibration_splitter=&#x27;$UNCHANGED$&#x27;,
     sample_weight=&#x27;$UNCHANGED$&#x27;,
-    tts_kwargs=&#x27;$UNCHANGED$&#x27;,
 )</code></pre></div>
 
 Request metadata passed to the `fit` method.
@@ -395,8 +396,8 @@ Request metadata passed to the `fit` method.
 
 <dl class="api-fields">
 <dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>auto_calibrate</code> parameter in <code>fit</code>.</p></dd>
+<dt><code class="api-field-name">calibration_splitter</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>calibration_splitter</code> parameter in <code>fit</code>.</p></dd>
 <dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>sample_weight</code> parameter in <code>fit</code>.</p></dd>
-<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>tts_kwargs</code> parameter in <code>fit</code>.</p></dd>
 </dl>
 
 #### Returns
@@ -411,7 +412,7 @@ Request metadata passed to the `fit` method.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L137">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L138">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
 
 Set sklearn parameters and invalidate fitted and calibrated state.
 

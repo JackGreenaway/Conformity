@@ -18,7 +18,7 @@ We use a synthetic three-class dataset as a stand-in for six numeric ticket feat
 import numpy as np
 from sklearn.datasets import make_classification
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, ShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -42,7 +42,7 @@ model = ConformalClassifier(
         ]
     ),
     method="lac",
-    tts_kwargs={"random_state": 23},
+    calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.2, random_state=23),
 ).fit(X_dev, y_dev)
 mask, probabilities = model.predict(X_test, alpha=0.1, return_set=True)
 labels = [model.classes_[row].tolist() for row in mask]
@@ -85,4 +85,4 @@ This run retains the true team for 216 of 225 test tickets (96.0%), while return
 
 Evaluate a review policy on a separate test set. Compare LAC with APS on development data, then reserve fresh calibration data for the selected method. See [classification guidance](../user-guide/classification.md) for deterministic APS limitations.
 
-The [statistical specification](../legacy/THEORY.md#evaluation-and-limits) explains the coverage assumptions and limits behind this example.
+The [theory guide](../theory.md#marginal-coverage-and-its-limits) explains the coverage assumptions and limits behind this example.

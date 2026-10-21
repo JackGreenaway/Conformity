@@ -82,4 +82,4 @@ The report pairs point error with coverage, width and interval score, with width
 
 Choose a policy on development data and evaluate it once on untouched test data. Investigate group coverage and drift before deployment; see [diagnostics](../user-guide/diagnostics.md).
 
-The [statistical specification](../legacy/THEORY.md#evaluation-and-limits) explains the coverage assumptions and limits behind this example.
+The [theory guide](../theory.md#marginal-coverage-and-its-limits) explains the coverage assumptions and limits behind this example.

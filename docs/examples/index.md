@@ -12,4 +12,4 @@ Choose a question before choosing a component. Every Python block in the new gui
 | Can I develop models with sklearn tools? | [Cross-validation](cross-validation.md) | Clone lifecycle and point scores |
 | Where are outcomes missed? | [Plotting](../plotting.md) | Predicted ranges and observed test targets |
 
-The [original workflows](../legacy/README.md) remain available, including supported outer-pipeline examples and their statistical caveats. Run examples with the locked environment described in [development](../development.md); keep calibration independent of all learning.
+Run examples with the locked environment described in [development](../development.md); keep calibration independent of all learning.

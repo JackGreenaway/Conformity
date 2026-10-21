@@ -3,7 +3,7 @@
 import numpy as np
 from sklearn.datasets import make_classification
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, ShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -27,7 +27,7 @@ model = ConformalClassifier(
         ]
     ),
     method="lac",
-    tts_kwargs={"random_state": 23},
+    calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.2, random_state=23),
 ).fit(X_dev, y_dev)
 mask, probabilities = model.predict(X_test, alpha=0.1, return_set=True)
 labels = [model.classes_[row].tolist() for row in mask]

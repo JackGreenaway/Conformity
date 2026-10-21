@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 from sklearn.datasets import make_regression
 from sklearn.dummy import DummyRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, ShuffleSplit
 
 from conformity import ConformalRegressor
 
@@ -171,7 +171,7 @@ def test_auto_calibrate_argument(
         np.concatenate([X_train, X_test]),
         np.concatenate([y_train, y_test]),
         auto_calibrate=True,
-        tts_kwargs={"test_size": 0.2, "random_state": 1},
+        calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.2, random_state=1),
     )
 
     assert reg.is_calibrated_
@@ -403,7 +403,7 @@ def test_auto_calibrate_with_small_dataset(
         X_small,
         y_small,
         auto_calibrate=True,
-        tts_kwargs={"test_size": 0.3, "random_state": 1},
+        calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.3, random_state=1),
     )
 
     assert reg.is_calibrated_

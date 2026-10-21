@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -11,7 +11,7 @@ from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.metrics import r2_score
 from typing_extensions import Self
 
-from ._typing import FeatureMatrix, FloatArray, TrainTestSplitKwargs
+from ._typing import FeatureMatrix, FloatArray
 from .base import BaseConformalPredictor
 
 
@@ -70,7 +70,7 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
         estimator: BaseEstimator,
         *,
         auto_calibrate: bool = True,
-        tts_kwargs: Optional[TrainTestSplitKwargs] = None,
+        calibration_splitter: Any = None,
         interval_method: Literal["symmetric", "asymmetric"] = "symmetric",
     ) -> None:
         """Configure the regressor, split and interval calibration method.
@@ -81,9 +81,9 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
             Cloneable sklearn regressor or preprocessing-and-regression pipeline.
         auto_calibrate : bool
             Reserve held-out calibration data during fit; defaults to True.
-        tts_kwargs : TrainTestSplitKwargs or None
-            train_test_split options for automatic calibration. By default,
-            test_size=0.2, shuffle=True and stratify=None.
+        calibration_splitter : object with split(X, y), or None
+            Splitter producing exactly one training/calibration split. Defaults
+            to ``ShuffleSplit(n_splits=1, test_size=0.2)``.
         interval_method : {"symmetric", "asymmetric"}
             Symmetric absolute-residual calibration (default), or separate signed
             residual quantiles with alpha / 2 allocated to each tail.
@@ -92,7 +92,7 @@ class ConformalRegressor(RegressorMixin, BaseConformalPredictor):
         super().__init__(
             estimator,
             auto_calibrate=auto_calibrate,
-            tts_kwargs=tts_kwargs,
+            calibration_splitter=calibration_splitter,
         )
         self.interval_method = interval_method
 

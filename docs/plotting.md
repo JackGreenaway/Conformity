@@ -11,7 +11,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, ShuffleSplit
 
 from conformity import ConformalRegressor
 
@@ -20,9 +20,10 @@ X = rng.uniform(20, 500, size=(500, 1))  # Delivery distance in km.
 y = 8 + 0.08 * X[:, 0] + rng.normal(0, 4, 500)  # Delivery time in hours.
 X_dev, X_test, y_dev, y_test = train_test_split(X, y, test_size=0.2, random_state=32)
 # Automatic calibration holds out 20% of development rows before fitting.
-model = ConformalRegressor(LinearRegression(), tts_kwargs={"random_state": 33}).fit(
-    X_dev, y_dev
-)
+model = ConformalRegressor(
+    LinearRegression(),
+    calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.2, random_state=33),
+).fit(X_dev, y_dev)
 order = np.argsort(X_test[:, 0])
 x = X_test[:, 0][order]
 points, intervals = model.predict(X_test[order], alpha=0.1, return_interval=True)

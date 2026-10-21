@@ -75,4 +75,4 @@ Use `evaluate` for a complete report. Regression includes R², MAE and MSE for p
 | Method changed after calibration | Refit/recalibrate with the intended score method |
 | Invalid bounds or membership | Use ordered non-NaN `(n, 2)` bounds or a nonempty boolean mask |
 
-See [API metric definitions](../api.md) and [calibration limits](calibration.md) before interpreting weighted or filtered evaluations.
+See [API metric definitions](../api/metrics.md) and [calibration limits](calibration.md) before interpreting weighted or filtered evaluations.

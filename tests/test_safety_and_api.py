@@ -19,7 +19,7 @@ from sklearn.base import (
 from sklearn.dummy import DummyRegressor
 from sklearn.exceptions import NotFittedError
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.model_selection import GridSearchCV, cross_val_score
+from sklearn.model_selection import GridSearchCV, cross_val_score, ShuffleSplit
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.estimator_checks import check_estimator
@@ -209,7 +209,7 @@ def test_sparse_auto_calibration_and_original_estimator_untouched() -> None:
     estimator = LinearRegression()
     reg = ConformalRegressor(
         estimator,
-        tts_kwargs={"test_size": 0.25, "random_state": 7},
+        calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.25, random_state=7),
         auto_calibrate=False,
     )
     reg.fit(X, y, auto_calibrate=True, sample_weight=np.ones(40))
@@ -230,7 +230,11 @@ def test_reproducible_split_and_training_weight_alignment() -> None:
     weight = np.arange(1, 101)
     objects = [
         ConformalRegressor(
-            LinearRegression(), tts_kwargs={"random_state": 42}, auto_calibrate=False
+            LinearRegression(),
+            calibration_splitter=ShuffleSplit(
+                n_splits=1, test_size=0.2, random_state=42
+            ),
+            auto_calibrate=False,
         )
         for _ in range(2)
     ]
@@ -353,7 +357,9 @@ def test_dataframe_column_selecting_pipeline() -> tuple[
         ColumnTransformer([("a", StandardScaler(), ["a"])]), LinearRegression()
     )
     reg = ConformalRegressor(
-        pipeline, tts_kwargs={"random_state": 0}, auto_calibrate=False
+        pipeline,
+        calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.2, random_state=0),
+        auto_calibrate=False,
     ).fit(X, y, auto_calibrate=True)
     assert reg.predict_interval(X.iloc[:2], alpha=0.2).shape == (2, 2)
     with pytest.raises(ValueError, match="feature names"):

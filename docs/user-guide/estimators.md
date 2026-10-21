@@ -78,6 +78,7 @@ The example below deliberately wraps the whole pipeline to demonstrate **automat
 ```python
 import numpy as np
 from sklearn.linear_model import Ridge
+from sklearn.model_selection import ShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -87,7 +88,10 @@ rng = np.random.default_rng(42)
 X = rng.normal(size=(200, 3))
 y = X[:, 0] + rng.normal(size=200)
 wrapped = Pipeline([("scaler", StandardScaler()), ("ridge", Ridge())])
-model = ConformalRegressor(wrapped, tts_kwargs={"random_state": 0}).fit(X, y)
+model = ConformalRegressor(
+    wrapped,
+    calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.2, random_state=0),
+).fit(X, y)
 assert not hasattr(wrapped[-1], "coef_")
 assert model.estimator_[0].n_samples_seen_ == 160
 assert model.n_calibration_ == 40
@@ -104,7 +108,7 @@ The scaler sees only 160 fitting rows; 40 are reserved for residual calibration.
 
 Constructor `auto_calibrate=True` supports normal scikit-learn `fit`, cloning and cross-validation. Use `auto_calibrate=False` when you have an explicit independent calibration partition. Fit-time overrides are available but constructor choices are easier to preserve through cloning.
 
-An outer **learned** preprocessing step followed by an **automatically calibrating** wrapper is supported computationally, but preprocessing then learns from the internal calibration features. That combination does not satisfy the usual split-conformal proof. Manual calibration held out before the entire pipeline fit avoids this issue; stateless or independently fixed transformations also avoid learning from the internal split. See [the preserved pipeline discussion](../legacy/THEORY.md#pipeline-placement-and-selection).
+An outer **learned** preprocessing step followed by an **automatically calibrating** wrapper is supported computationally, but preprocessing then learns from the internal calibration features. That combination does not satisfy the usual split-conformal proof. Manual calibration held out before the entire pipeline fit avoids this issue; stateless or independently fixed transformations also avoid learning from the internal split.
 
 Fit weights and step-qualified `*__sample_weight` vectors are validated and sliced with the fitting split. Calibration remains unweighted. Other fit metadata is forwarded unchanged; callers must handle its alignment. Weighted evaluation describes a weighted test population and does not establish weighted calibration coverage.
 
@@ -114,4 +118,4 @@ Fit weights and step-qualified `*__sample_weight` vectors are validated and slic
 
 ## Next steps
 
-Use [cross-validation](../examples/cross-validation.md) for point-model development, then reserve untouched calibration and test data for final uncertainty evaluation. Inspect the [generated class references](../api.md) for signatures and lifecycle methods.
+Use [cross-validation](../examples/cross-validation.md) for point-model development, then reserve untouched calibration and test data for final uncertainty evaluation. Inspect the [generated class references](../api/estimators.md) for signatures and lifecycle methods.

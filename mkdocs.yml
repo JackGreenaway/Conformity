@@ -27,7 +27,23 @@ nav:
       - Theory: theory.md
       - Plotting: plotting.md
   - API reference:
-      - Overview and functions: api.md
+      - Overview: api/index.md
+      - Estimators: api/estimators.md
+      - Metrics:
+          - Overview: api/metrics.md
+          - Classification:
+              - Set coverage: api/metrics/prediction-set-coverage.md
+              - Coverage by class: api/metrics/prediction-set-coverage-by-class.md
+              - Set size: api/metrics/prediction-set-size.md
+              - Empty set rate: api/metrics/prediction-set-empty-rate.md
+              - Singleton set rate: api/metrics/prediction-set-singleton-rate.md
+          - Regression:
+              - Interval coverage: api/metrics/prediction-interval-coverage.md
+              - Lower miss rate: api/metrics/prediction-interval-lower-miss-rate.md
+              - Upper miss rate: api/metrics/prediction-interval-upper-miss-rate.md
+              - Interval width: api/metrics/prediction-interval-width.md
+              - Normalized interval width: api/metrics/normalized-prediction-interval-width.md
+              - Interval score: api/metrics/interval-score.md
       - BaseConformalPredictor: classes/base-conformal-predictor.md
       - ConformalRegressor: classes/conformal-regressor.md
       - ConformalClassifier: classes/conformal-classifier.md
@@ -37,10 +53,6 @@ nav:
       - Classification review: examples/classification.md
       - Visual examples: examples/plots.md
       - Cross-validation: examples/cross-validation.md
-  - Existing documentation:
-      - Original workflows: legacy/README.md
-      - Original API guide: legacy/DOCUMENTATION.md
-      - Statistical specification: legacy/THEORY.md
   - Development and deployment: development.md
 plugins: [search]
 markdown_extensions:

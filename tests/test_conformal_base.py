@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import pytest
@@ -11,7 +11,7 @@ from numpy.typing import ArrayLike, NDArray
 from sklearn.base import BaseEstimator
 from sklearn.datasets import make_regression
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import ShuffleSplit, train_test_split
 from typing_extensions import Self
 
 from conformity import BaseConformalPredictor
@@ -35,38 +35,18 @@ class ConcreteConformalPredictor(BaseConformalPredictor):
 
     def __init__(self, estimator: BaseEstimator) -> None:
         """Configure the wrapped estimator and held-out calibration workflow."""
-        super().__init__(estimator)
-        self.estimator = estimator
+        super().__init__(estimator, auto_calibrate=False)
 
     def _compute_non_conformity_scores(
         self, X: FeatureMatrix, y: ArrayLike
     ) -> FloatArray:
         """Compute absolute residuals as non-conformity scores."""
-        predictions = self.estimator.predict(X)
+        predictions = self.estimator_.predict(X)
         return np.abs(y - predictions)
 
     def _make_prediction(self, X: FeatureMatrix, q_level: float) -> FloatArray:
         """Return point predictions."""
-        return self.estimator.predict(X)
-
-    def fit(
-        self,
-        X: FeatureMatrix,
-        y: ArrayLike,
-        auto_calibrate: bool = False,
-        tts_kwargs: Optional[dict[str, Any]] = None,
-    ) -> Self:
-        """Fit the estimator."""
-        self.estimator.fit(X, y)
-
-        if auto_calibrate:
-            if tts_kwargs is None:
-                tts_kwargs = {}
-            X_train, X_calib, y_train, y_calib = train_test_split(X, y, **tts_kwargs)
-            self.estimator.fit(X_train, y_train)
-            self.calibrate(X_calib, y_calib)
-
-        return self
+        return self.estimator_.predict(X)
 
     def calibrate(self, X: FeatureMatrix, y: ArrayLike) -> Self:
         """Calibrate the conformal predictor."""
@@ -167,7 +147,7 @@ def test_base_auto_calibrate(
         np.concatenate([X_train, X_test]),
         np.concatenate([y_train, y_test]),
         auto_calibrate=True,
-        tts_kwargs={"test_size": 0.2, "random_state": 1},
+        calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.2, random_state=1),
     )
 
     assert predictor.is_calibrated_

@@ -7,13 +7,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.datasets import make_classification
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, ShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from conformity import (
     ConformalClassifier,
     ConformalRegressor,
+    prediction_set_coverage,
     prediction_set_coverage_by_class,
 )
 
@@ -85,7 +86,7 @@ classifier = ConformalClassifier(
         ]
     ),
     method="lac",
-    tts_kwargs={"random_state": 43},
+    calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.2, random_state=43),
 ).fit(X_dev, y_dev)
 membership, _ = classifier.predict(X_test, alpha=0.1, return_set=True)
 set_sizes = membership.sum(axis=1)
@@ -93,6 +94,16 @@ counts = np.bincount(set_sizes, minlength=len(classifier.classes_) + 1)
 coverage_by_class = prediction_set_coverage_by_class(
     y_test, membership, classes=classifier.classes_
 )
+overall_coverage = prediction_set_coverage(
+    y_test, membership, classes=classifier.classes_
+)
+print(f"classification: marginal test coverage={overall_coverage:.3f}")
+for label in classifier.classes_:
+    class_count = int(np.sum(y_test == label))
+    print(
+        f"class {label}: observed coverage={coverage_by_class[label]:.3f} "
+        f"(n={class_count})"
+    )
 
 fig, (scatter_ax, count_ax, coverage_ax) = plt.subplots(3, 1, figsize=(7, 9))
 for label, name in enumerate(("Class 0", "Class 1", "Class 2")):
@@ -116,15 +127,21 @@ count_ax.set(
     ylabel="Held-out samples",
     title="Prediction set sizes",
 )
-class_labels = [str(label) for label in classifier.classes_]
-class_rates = [coverage_by_class[label] for label in classifier.classes_]
+class_labels = [
+    f"Overall\n(n={len(y_test)})",
+    *[f"{label}\n(n={np.sum(y_test == label)})" for label in classifier.classes_],
+]
+class_rates = [
+    overall_coverage,
+    *[coverage_by_class[label] for label in classifier.classes_],
+]
 coverage_ax.bar(class_labels, class_rates, color="C4")
-coverage_ax.axhline(0.9, color="black", linestyle="--", label="90% target")
+coverage_ax.axhline(0.9, color="black", linestyle="--", label="90% marginal reference")
 coverage_ax.set(
     ylim=(0, 1.05),
-    xlabel="True class",
+    xlabel="Population / true class",
     ylabel="Observed coverage",
-    title="Empirical class-wise coverage",
+    title="Observed test coverage",
 )
 coverage_ax.legend(fontsize=8)
 fig.tight_layout()

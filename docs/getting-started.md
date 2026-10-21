@@ -6,7 +6,7 @@ A regression score measures average model quality, but does not provide a range 
 
 ## Configuration
 
-The test split is reserved for evaluation. The conformal wrapper encloses the full pipeline and automatically holds out the default 20% calibration partition before the scaler or Ridge fit. Set `tts_kwargs={"test_size": 0.25}` to reserve a different fraction. `alpha=0.1` requests 90% marginal coverage; it is not the Ridge regularization parameter.
+The test split is reserved for evaluation. The conformal wrapper encloses the full pipeline and automatically holds out the default 20% calibration partition before the scaler or Ridge fit. Set `calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.25)` to reserve a different fraction. `alpha=0.1` requests 90% marginal coverage; it is not the Ridge regularization parameter.
 
 **Notice:** When using automatic calibration with learned preprocessing, wrap the entire pipeline. Putting the wrapper after a scaler lets the scaler learn from the internal calibration features, which invalidates the usual split-conformal coverage argument. The [pipeline guide](user-guide/estimators.md#why-the-split-matters) explains manual calibration and other placement choices.
 
@@ -14,7 +14,7 @@ The test split is reserved for evaluation. The conformal wrapper encloses the fu
 import numpy as np
 from sklearn.datasets import make_regression
 from sklearn.linear_model import Ridge
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, ShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -24,7 +24,7 @@ X, y = make_regression(n_samples=1000, n_features=5, noise=15, random_state=7)
 X_dev, X_test, y_dev, y_test = train_test_split(X, y, test_size=0.25, random_state=8)
 model = ConformalRegressor(
     Pipeline([("scaler", StandardScaler()), ("ridge", Ridge(alpha=1.0))]),
-    tts_kwargs={"random_state": 9},
+    calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.2, random_state=9),
 ).fit(X_dev, y_dev)
 alpha = 0.1
 points, intervals = model.predict(X_test, alpha=alpha, return_interval=True)

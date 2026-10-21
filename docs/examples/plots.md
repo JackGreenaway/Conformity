@@ -20,13 +20,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.datasets import make_classification
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, ShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from conformity import (
     ConformalClassifier,
     ConformalRegressor,
+    prediction_set_coverage,
     prediction_set_coverage_by_class,
 )
 
@@ -98,7 +99,7 @@ classifier = ConformalClassifier(
         ]
     ),
     method="lac",
-    tts_kwargs={"random_state": 43},
+    calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.2, random_state=43),
 ).fit(X_dev, y_dev)
 membership, _ = classifier.predict(X_test, alpha=0.1, return_set=True)
 set_sizes = membership.sum(axis=1)
@@ -106,6 +107,16 @@ counts = np.bincount(set_sizes, minlength=len(classifier.classes_) + 1)
 coverage_by_class = prediction_set_coverage_by_class(
     y_test, membership, classes=classifier.classes_
 )
+overall_coverage = prediction_set_coverage(
+    y_test, membership, classes=classifier.classes_
+)
+print(f"classification: marginal test coverage={overall_coverage:.3f}")
+for label in classifier.classes_:
+    class_count = int(np.sum(y_test == label))
+    print(
+        f"class {label}: observed coverage={coverage_by_class[label]:.3f} "
+        f"(n={class_count})"
+    )
 
 fig, (scatter_ax, count_ax, coverage_ax) = plt.subplots(3, 1, figsize=(7, 9))
 for label, name in enumerate(("Class 0", "Class 1", "Class 2")):
@@ -129,15 +140,21 @@ count_ax.set(
     ylabel="Held-out samples",
     title="Prediction set sizes",
 )
-class_labels = [str(label) for label in classifier.classes_]
-class_rates = [coverage_by_class[label] for label in classifier.classes_]
+class_labels = [
+    f"Overall\n(n={len(y_test)})",
+    *[f"{label}\n(n={np.sum(y_test == label)})" for label in classifier.classes_],
+]
+class_rates = [
+    overall_coverage,
+    *[coverage_by_class[label] for label in classifier.classes_],
+]
 coverage_ax.bar(class_labels, class_rates, color="C4")
-coverage_ax.axhline(0.9, color="black", linestyle="--", label="90% target")
+coverage_ax.axhline(0.9, color="black", linestyle="--", label="90% marginal reference")
 coverage_ax.set(
     ylim=(0, 1.05),
-    xlabel="True class",
+    xlabel="Population / true class",
     ylabel="Observed coverage",
-    title="Empirical class-wise coverage",
+    title="Observed test coverage",
 )
 coverage_ax.legend(fontsize=8)
 fig.tight_layout()
@@ -149,20 +166,24 @@ plt.close(fig)
 
 ![Symmetric and asymmetric regression plots comparing point predictions and conformal intervals on the same held-out outcomes](../images/symmetric-asymmetric-intervals.png)
 
-![Classification scatter plot with point size showing candidate set size, a set size count chart, and empirical class-wise coverage](../images/classification-prediction-sets.png)
+![Classification scatter plot with point size showing candidate set size, a set size count chart, and observed coverage for the overall population and each class](../images/classification-prediction-sets.png)
 
 <!-- BEGIN EXAMPLE OUTPUT -->
 
 ```text
 symmetric: coverage=0.880, lower_miss=0.000, upper_miss=0.120, mean_width=8.73, normalized_width=0.49, interval_score=23.32
 asymmetric: coverage=0.870, lower_miss=0.030, upper_miss=0.100, mean_width=11.66, normalized_width=0.66, interval_score=18.62
+classification: marginal test coverage=0.916
+class 0: observed coverage=0.987 (n=75)
+class 1: observed coverage=0.907 (n=75)
+class 2: observed coverage=0.853 (n=75)
 ```
 
 <!-- END EXAMPLE OUTPUT -->
 
 Both regression methods use identical fit, calibration and test partitions. The symmetric method uses one absolute-residual cutoff on both sides; the asymmetric method learns separate lower and upper corrections with equal tail allocation. The skewed synthetic noise makes that difference visible. Neither method estimates conditional coverage by distance. For asymmetric regression, compare the lower and upper miss rates with `alpha / 2` as empirical diagnostics, alongside width and interval score. The normalized width divides by the test-target IQR; the example also reports MAE, R² and MSE through `evaluate`, so point accuracy stays visible beside interval size.
 
-In the classification plot, larger markers have more plausible labels and call for review. The bars compare empirical class-wise coverage with the nominal target; finite per-class sample counts make them noisy, and the default marginal method does not guarantee class-wise coverage. `classifier.evaluate` also reports overall coverage and mean set size on held-out data.
+In the classification plot, larger markers have more plausible labels and call for review. The chart and printed output show overall test coverage alongside each class's rate and sample count. Here the overall rate exceeds 90% while the third class (label `2`) is below it. That does not contradict the guarantee: the marginal guarantee averages over classes and inputs and is a probability over calibration and a fresh observation, not a promise that every finite test batch reaches 90%. The dashed line is a visual reference only; the default method does not guarantee 90% within each class. `classifier.evaluate` also reports overall coverage and mean set size on held-out data.
 
 ## Next steps
 

@@ -11,6 +11,7 @@ from sklearn.base import clone, is_classifier, is_regressor
 from sklearn.datasets import make_classification, make_regression
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.model_selection import (
+    ShuffleSplit,
     train_test_split,
 )
 from sklearn.pipeline import Pipeline
@@ -307,7 +308,12 @@ class TestAutoCalibrationEdgeCases:
 
         reg = ConformalRegressor(LinearRegression(), auto_calibrate=False)
         reg.fit(
-            X, y, auto_calibrate=True, tts_kwargs={"test_size": 0.5, "random_state": 42}
+            X,
+            y,
+            auto_calibrate=True,
+            calibration_splitter=ShuffleSplit(
+                n_splits=1, test_size=0.5, random_state=42
+            ),
         )
 
         assert reg.is_calibrated_

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, Literal, Optional, Union
 
 import numpy as np
@@ -10,7 +11,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.metrics import accuracy_score
 from typing_extensions import Self
 
-from ._typing import FeatureMatrix, FloatArray, TrainTestSplitKwargs
+from ._typing import FeatureMatrix, FloatArray
 from .base import BaseConformalPredictor
 
 
@@ -68,7 +69,8 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
         *,
         method: Literal["lac", "aps"] = "lac",
         auto_calibrate: bool = True,
-        tts_kwargs: Optional[TrainTestSplitKwargs] = None,
+        calibration_splitter: Any = None,
+        warn_on_rare_classes: bool = True,
     ) -> None:
         """Configure the wrapped estimator and held-out calibration workflow.
 
@@ -80,16 +82,20 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
             Use lac (1 - probability) or aps (cumulative ranked probability).
         auto_calibrate : bool or None
             Reserve held-out calibration data during fit; defaults to True.
-        tts_kwargs : TrainTestSplitKwargs or None
-            train_test_split options for automatic calibration. By default,
-            test_size=0.2, shuffle=True and stratify=None.
+        calibration_splitter : object with split(X, y), or None
+            Splitter producing exactly one training/calibration split. Defaults
+            to ``ShuffleSplit(n_splits=1, test_size=0.2)``.
+        warn_on_rare_classes : bool
+            Warn when automatic splitting leaves any observed class out of the
+            training or calibration partition. Set False to disable the warning.
         """
         super().__init__(
             estimator,
             auto_calibrate=auto_calibrate,
-            tts_kwargs=tts_kwargs,
+            calibration_splitter=calibration_splitter,
         )
         self.method = method
+        self.warn_on_rare_classes = warn_on_rare_classes
 
     def _validate_estimator(self, estimator: BaseEstimator) -> None:
         """Require the prediction methods needed by this wrapper."""
@@ -98,6 +104,40 @@ class ConformalClassifier(ClassifierMixin, BaseConformalPredictor):
             raise ValueError("method must be 'lac' or 'aps'")
         if not callable(getattr(estimator, "predict_proba", None)):
             raise TypeError("classification estimator must implement predict_proba")
+        if not isinstance(self.warn_on_rare_classes, (bool, np.bool_)):
+            raise ValueError("warn_on_rare_classes must be boolean")
+
+    def _check_calibration_split(
+        self,
+        y: NDArray[Any],
+        train_indices: NDArray[np.integer[Any]],
+        calibration_indices: NDArray[np.integer[Any]],
+    ) -> None:
+        """Warn if an automatic split omits an observed class on either side."""
+        if not self.warn_on_rare_classes:
+            return
+        classes = np.unique(y)
+        train_classes = np.unique(y[train_indices])
+        calibration_classes = np.unique(y[calibration_indices])
+        missing_train = classes[~np.isin(classes, train_classes)]
+        missing_calibration = classes[~np.isin(classes, calibration_classes)]
+        if len(missing_train) or len(missing_calibration):
+            details = []
+            if len(missing_train):
+                details.append(f"training partition: {missing_train.tolist()!r}")
+            if len(missing_calibration):
+                details.append(
+                    f"calibration partition: {missing_calibration.tolist()!r}"
+                )
+            warnings.warn(
+                "Automatic calibration split omits observed class(es) from "
+                + " and ".join(details)
+                + ". Consider StratifiedShuffleSplit as calibration_splitter when "
+                "each class has enough observations for both partitions. "
+                "Set warn_on_rare_classes=False to silence this warning.",
+                UserWarning,
+                stacklevel=3,
+            )
 
     def _probabilities(self, X: FeatureMatrix) -> FloatArray:
         """Validate a probability matrix with one column per fitted class."""

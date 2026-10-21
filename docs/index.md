@@ -8,7 +8,7 @@ Conformity solves a practical gap in ordinary supervised learning: a model gives
 
 <div class="docs-actions" markdown="1">
 
-[Get started](getting-started.md) [Choose a component](api.md)
+[Get started](getting-started.md) [Choose a component](api/estimators.md)
 
 </div>
 </div>
@@ -30,7 +30,7 @@ Split conformal coverage is marginal over exchangeable calibration and future ob
 
 Regression provides symmetric or separately calibrated asymmetric, constant-correction, single-output intervals. Classification requires valid `predict_proba` output and uses LAC or deterministic APS; empty sets are valid outcomes. Tiny calibration sets can require infinite intervals or all-class sets.
 
-Read [calibration and limitations](user-guide/calibration.md) before using the results to make decisions. The [original documentation](legacy/README.md), [API guide](legacy/DOCUMENTATION.md), and [statistical specification](legacy/THEORY.md) remain available in full.
+Read [calibration and limitations](user-guide/calibration.md) before using the results to make decisions.
 
 ## Understand the theory
 

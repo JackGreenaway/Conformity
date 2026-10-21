@@ -18,7 +18,7 @@ The asymmetric method stores signed residuals. It selects a lower and upper corr
 ```python
 from sklearn.datasets import make_regression
 from sklearn.linear_model import Ridge
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, ShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -31,7 +31,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 model = ConformalRegressor(
     Pipeline([("scale", StandardScaler()), ("ridge", Ridge())]),
     interval_method="asymmetric",
-    tts_kwargs={"random_state": 0},
+    calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.2, random_state=0),
 )
 model.fit(X_train, y_train)  # automatic split happens before pipeline fitting
 points, intervals = model.predict(X_test, alpha=0.1, return_interval=True)

@@ -2,6 +2,8 @@
 
 ## What problem does conformal prediction solve?
 
+Imagine a robot guessing an answer. We check how wrong it was on examples it did not learn from, then make a “maybe zone” big enough to catch the right answer as often as our chosen target says—if new examples are like the old ones.
+
 A regression model usually returns one number, and a classifier usually returns one label. Neither answer tells you how much uncertainty remains about the next outcome. A prediction interval or a set of plausible labels can make that uncertainty useful for a decision.
 
 Conformal prediction constructs a **prediction region** around a model's output using observed prediction errors. You choose a miscoverage rate, $\alpha$, such as 0.1 for a 90% coverage target. Under the assumptions below, the region contains the outcome of a fresh observation with probability at least $1-\alpha$.
@@ -262,7 +264,7 @@ Validity and usefulness are different questions. At comparable coverage, narrowe
 
 Full conformal methods refit or recompute using candidate outcomes; split conformal avoids that cost by reserving calibration data. Other methods, including conformalized quantile regression, CV+, jackknife+ and weighted conformal prediction, use different score functions or calibration protocols. Their guarantees cannot be assumed for this package's current implementations.
 
-Run the [regression](examples/regression.md) or [classification](examples/classification.md) example, then inspect [coverage and efficiency diagnostics](user-guide/diagnostics.md). The preserved [statistical specification](legacy/THEORY.md) gives the package's precise contracts and pipeline caveats.
+Run the [regression](examples/regression.md) or [classification](examples/classification.md) example, then inspect [coverage and efficiency diagnostics](user-guide/diagnostics.md).
 
 ## Further reading
 

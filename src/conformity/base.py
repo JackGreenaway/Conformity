@@ -10,12 +10,12 @@ from typing import Any, Optional
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from sklearn.base import BaseEstimator, clone, is_regressor
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import ShuffleSplit
 from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
 from typing_extensions import Self
 
-from ._typing import FeatureMatrix, TrainTestSplitKwargs
+from ._typing import FeatureMatrix
 
 DEFAULT_CALIBRATION_TEST_SIZE: float = 0.2
 
@@ -47,9 +47,8 @@ class BaseConformalPredictor(BaseEstimator, ABC):
     """Wrap a cloned estimator with held-out, unweighted split calibration.
 
     Predictions follow the sklearn point-prediction contract.
-    ``tts_kwargs`` controls automatic splitting. By default,
-    ``train_test_split`` reserves 20% of fit data for calibration, shuffles the
-    rows, and does not stratify.
+    ``calibration_splitter`` controls automatic splitting. By default, a
+    ``ShuffleSplit`` reserves 20% of fit data for calibration.
     For a final-step wrapper, hold out calibration before fitting the Pipeline
     and calibrate on features transformed by its fitted preprocessing steps.
     With automatic splitting, wrap the whole Pipeline to exclude calibration
@@ -82,12 +81,15 @@ class BaseConformalPredictor(BaseEstimator, ABC):
     Examples
     --------
     >>> from sklearn.linear_model import Ridge
+    >>> from sklearn.model_selection import ShuffleSplit
     >>> from conformity import BaseConformalPredictor, ConformalRegressor
     >>> issubclass(ConformalRegressor, BaseConformalPredictor)
     True
-    >>> model = ConformalRegressor(Ridge(), tts_kwargs={"test_size": 0.25})
-    >>> model.get_params()["tts_kwargs"]
-    {'test_size': 0.25}
+    >>> model = ConformalRegressor(Ridge(), calibration_splitter=ShuffleSplit(
+    ...     n_splits=1, test_size=0.25, random_state=0
+    ... ))
+    >>> model.get_params()["calibration_splitter"].test_size
+    0.25
     >>> model.is_calibrated_
     False
     """
@@ -109,7 +111,7 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         estimator: BaseEstimator,
         *,
         auto_calibrate: bool = True,
-        tts_kwargs: Optional[TrainTestSplitKwargs] = None,
+        calibration_splitter: Any = None,
     ) -> None:
         """Configure the wrapped estimator and held-out calibration workflow.
 
@@ -119,14 +121,13 @@ class BaseConformalPredictor(BaseEstimator, ABC):
             Cloneable sklearn estimator; classifiers also require predict_proba.
         auto_calibrate : bool
             Reserve held-out calibration data during fit; defaults to True.
-        tts_kwargs : TrainTestSplitKwargs or None
-            train_test_split options used for automatic calibration. By default,
-            test_size is 0.2, shuffle is True, and stratify is None. An explicit
-            test_size here overrides the default.
+        calibration_splitter : object with split(X, y), or None
+            Splitter producing exactly one (training, calibration) index pair.
+            Defaults to ``ShuffleSplit(n_splits=1, test_size=0.2)``.
         """
         self.estimator = estimator
         self.auto_calibrate = auto_calibrate
-        self.tts_kwargs = tts_kwargs
+        self.calibration_splitter = calibration_splitter
 
     def __sklearn_tags__(self) -> Tags:
         """Advertise sparse input support to sklearn validation and tooling."""
@@ -188,7 +189,7 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         X: FeatureMatrix,
         y: ArrayLike,
         auto_calibrate: Optional[bool] = None,
-        tts_kwargs: Optional[TrainTestSplitKwargs] = None,
+        calibration_splitter: Any = None,
         *,
         sample_weight: Optional[ArrayLike] = None,
         **fit_params: Any,
@@ -208,12 +209,11 @@ class BaseConformalPredictor(BaseEstimator, ABC):
             One target per sample; classification labels follow the fitted classes.
         auto_calibrate : bool or None
             Reserve an independent calibration split when fitting.
-        tts_kwargs : TrainTestSplitKwargs or None
-            train_test_split options for this fit; requires automatic calibration.
-            If provided, this mapping replaces the constructor mapping. Missing
-            options use defaults: test_size=0.2, train_size=None, random_state=None,
-            shuffle=True and stratify=None. Set ``random_state`` here for
-            reproducible automatic splits.
+        calibration_splitter : object with split(X, y), or None
+            Splitter for this fit; requires automatic calibration. A non-None
+            value replaces the constructor splitter. It must produce exactly
+            one training/calibration split. None uses the constructor value,
+            or the default shuffled 80/20 split.
         sample_weight : array-like of shape (n_samples,) or None
             Optional finite, nonnegative weights; fitting or evaluation only, never calibration.
         **fit_params : dict
@@ -238,12 +238,12 @@ class BaseConformalPredictor(BaseEstimator, ABC):
             self.__dict__.pop(name, None)
         if auto_calibrate is None:
             auto_calibrate = self.auto_calibrate
-        if tts_kwargs is None:
-            tts_kwargs = self.tts_kwargs if auto_calibrate else None
+        if calibration_splitter is None:
+            calibration_splitter = self.calibration_splitter if auto_calibrate else None
         if not isinstance(auto_calibrate, (bool, np.bool_)):
             raise ValueError("auto_calibrate must be boolean")
-        if tts_kwargs is not None and not auto_calibrate:
-            raise ValueError("tts_kwargs requires auto_calibrate=True")
+        if calibration_splitter is not None and not auto_calibrate:
+            raise ValueError("calibration_splitter requires auto_calibrate=True")
         X_checked, y_checked = validate_data(
             self,
             X,
@@ -275,16 +275,52 @@ class BaseConformalPredictor(BaseEstimator, ABC):
                 raise ValueError(f"{name} must contain at least one non-zero weight")
             weight_params[name] = weights
         if auto_calibrate:
-            options = {
-                "test_size": DEFAULT_CALIBRATION_TEST_SIZE,
-                "train_size": None,
-                "random_state": None,
-                "shuffle": True,
-                "stratify": None,
-            }
-            options.update(tts_kwargs or {})
+            splitter = (
+                calibration_splitter
+                if calibration_splitter is not None
+                else ShuffleSplit(n_splits=1, test_size=DEFAULT_CALIBRATION_TEST_SIZE)
+            )
+            split = getattr(splitter, "split", None)
+            if not callable(split):
+                raise TypeError("calibration_splitter must implement split(X, y)")
+            splits = iter(split(X_fit, y_checked))
+            try:
+                train, calib = next(splits)
+            except StopIteration as exc:
+                raise ValueError(
+                    "calibration_splitter must yield exactly one split"
+                ) from exc
+            try:
+                next(splits)
+            except StopIteration:
+                pass
+            else:
+                raise ValueError("calibration_splitter must yield exactly one split")
+            train = np.asarray(train)
+            calib = np.asarray(calib)
+            if not np.issubdtype(train.dtype, np.integer) or not np.issubdtype(
+                calib.dtype, np.integer
+            ):
+                raise ValueError("calibration_splitter indices must be integers")
+            train = train.astype(int, copy=False)
+            calib = calib.astype(int, copy=False)
+            if train.ndim != 1 or calib.ndim != 1 or not len(train) or not len(calib):
+                raise ValueError(
+                    "calibration_splitter must yield non-empty 1D index arrays"
+                )
+            if (
+                len(np.unique(train)) != len(train)
+                or len(np.unique(calib)) != len(calib)
+                or (train < 0).any()
+                or (calib < 0).any()
+                or (train >= len(y_checked)).any()
+                or (calib >= len(y_checked)).any()
+                or np.intersect1d(train, calib).size
+            ):
+                raise ValueError(
+                    "calibration_splitter indices must be unique, in range, and disjoint"
+                )
             # Split indices to retain DataFrame column names and slice weights.
-            train, calib = train_test_split(np.arange(len(y_checked)), **options)
 
             def take(idx: NDArray[np.integer[Any]]) -> FeatureMatrix:
                 """Select split rows while preserving DataFrame columns or sparse storage."""
@@ -301,6 +337,8 @@ class BaseConformalPredictor(BaseEstimator, ABC):
             fit_params.update(weight_params)
         estimator = clone(self.estimator)
         self._validate_estimator(estimator)
+        if auto_calibrate:
+            self._check_calibration_split(y_checked, train, calib)
         estimator.fit(X_train, y_train, **fit_params)
         self.estimator_ = estimator
         if hasattr(estimator, "classes_"):
@@ -314,6 +352,14 @@ class BaseConformalPredictor(BaseEstimator, ABC):
         for method in ("fit", "predict"):
             if not callable(getattr(estimator, method, None)):
                 raise TypeError(f"estimator must implement {method}")
+
+    def _check_calibration_split(
+        self,
+        y: NDArray[Any],
+        train_indices: NDArray[np.integer[Any]],
+        calibration_indices: NDArray[np.integer[Any]],
+    ) -> None:
+        """Run subclass-specific checks on an automatic calibration partition."""
 
     def _validate_X(self, X: FeatureMatrix) -> FeatureMatrix:
         """Check fitted state and feature layout, preserving DataFrame columns."""

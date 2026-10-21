@@ -10,7 +10,7 @@ Regression intervals · Classification sets · Scikit-learn workflows
 [![Tests](https://github.com/JackGreenaway/Conformity/actions/workflows/tests.yml/badge.svg)](https://github.com/JackGreenaway/Conformity/actions/workflows/tests.yml)
 [![PyPI](https://img.shields.io/pypi/v/conformity-calib?style=flat-square)](https://pypi.org/project/conformity-calib/)
 
-[Quick start](#quick-start) · [Documentation](https://jackgreenaway.github.io/Conformity/) · [API reference](docs/api.md) · [Theory](docs/theory.md) · [Development](docs/development.md)
+[Quick start](#quick-start) · [Documentation](https://jackgreenaway.github.io/Conformity/) · [API reference](docs/api/index.md) · [Theory](docs/theory.md) · [Development](docs/development.md)
 
 </div>
 
@@ -46,12 +46,12 @@ Requires Python **3.9+**, NumPy >=2.0.2 and scikit-learn >=1.6.1. Install `matpl
 
 ## Quick start
 
-Wrap the complete pipeline so automatic calibration splits before any learned preprocessing fits. Automatic calibration reserves 20% of rows passed to `fit` by default; set `tts_kwargs={"test_size": 0.25}` to change that. Here `alpha=0.1` requests 90% marginal coverage:
+Wrap the complete pipeline so automatic calibration splits before any learned preprocessing fits. Automatic calibration reserves 20% of rows passed to `fit` by default; set `calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.25)` to change that. Here `alpha=0.1` requests 90% marginal coverage:
 
 ```python
 from sklearn.datasets import make_regression
 from sklearn.linear_model import Ridge
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, ShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -61,7 +61,7 @@ X, y = make_regression(n_samples=1000, n_features=5, noise=15, random_state=7)
 X_dev, X_test, y_dev, y_test = train_test_split(X, y, test_size=0.25, random_state=8)
 model = ConformalRegressor(
     Pipeline([("scaler", StandardScaler()), ("ridge", Ridge())]),
-    tts_kwargs={"random_state": 9},
+    calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.2, random_state=9),
 ).fit(X_dev, y_dev)
 
 points, intervals = model.predict(X_test, alpha=0.1, return_interval=True)
@@ -88,7 +88,7 @@ Read [calibration and assumptions](docs/user-guide/calibration.md) and the [theo
 
 The [documentation site](https://jackgreenaway.github.io/Conformity/) covers installation, plotting, guides, estimator classes, diagnostics, runnable examples, generated API reference and development. It becomes available after the first successful Pages deployment.
 
-Start with [getting started](docs/getting-started.md), then [examples](docs/examples/index.md). The [original README workflows](docs/legacy/README.md), [existing API guide](DOCUMENTATION.md), and [theory](THEORY.md) are preserved in full.
+Start with [getting started](docs/getting-started.md), then browse the [examples](docs/examples/index.md), [user guides](docs/user-guide/index.md), and [theory](docs/theory.md).
 
 <a id="development"></a>
 <a id="releases"></a>

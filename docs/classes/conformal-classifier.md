@@ -5,12 +5,13 @@ Read more in the [User Guide](../user-guide/classification.md).
 <!-- BEGIN GENERATED REFERENCE -->
 ## Reference
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L17">[source]</a><pre><code><span class="api-keyword">class </span><span class="api-module">conformity.</span><span class="api-name">ConformalClassifier</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L18">[source]</a><pre><code><span class="api-keyword">class </span><span class="api-module">conformity.</span><span class="api-name">ConformalClassifier</span>(
     estimator,
     *,
     method=&#x27;lac&#x27;,
     auto_calibrate=True,
-    tts_kwargs=None,
+    calibration_splitter=None,
+    warn_on_rare_classes=True,
 )</code></pre></div>
 
 <div class="api-class-body" markdown="1">
@@ -23,7 +24,8 @@ Split conformal classification using LAC or deterministic APS scores.
 <dt><code class="api-field-name">estimator</code> <span class="api-field-type">BaseEstimator</span></dt><dd><p>Cloneable sklearn classifier implementing predict_proba.</p></dd>
 <dt><code class="api-field-name">method</code> <span class="api-field-type">{&#x27;lac&#x27;, &#x27;aps&#x27;}, default=&#x27;lac&#x27;</span></dt><dd><p>Use lac (1 - probability) or aps (cumulative ranked probability).</p></dd>
 <dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">bool or None, default=True</span></dt><dd><p>Reserve held-out calibration data during fit; defaults to True.</p></dd>
-<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">TrainTestSplitKwargs or None, default=None</span></dt><dd><p>train_test_split options for automatic calibration. By default, test_size=0.2, shuffle=True and stratify=None.</p></dd>
+<dt><code class="api-field-name">calibration_splitter</code> <span class="api-field-type">object with split(X, y), or None, default=None</span></dt><dd><p>Splitter producing exactly one training/calibration split. Defaults to <code>ShuffleSplit(n_splits=1, test_size=0.2)</code>.</p></dd>
+<dt><code class="api-field-name">warn_on_rare_classes</code> <span class="api-field-type">bool, default=True</span></dt><dd><p>Warn when automatic splitting leaves any observed class out of the training or calibration partition. Set False to disable the warning.</p></dd>
 </dl>
 
 ### Attributes
@@ -100,11 +102,12 @@ Split conformal classification using LAC or deterministic APS scores.
 | [set_params](#set-params) | Set sklearn parameters and invalidate fitted and calibrated state. |
 | [set_predict_request](#set-predict-request) | Request metadata passed to the ``predict`` method. |
 | [set_score_request](#set-score-request) | Request metadata passed to the ``score`` method. |
+
 ### calibrate {#calibrate .api-method-title}
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L130">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">calibrate</span>(X, y)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L170">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">calibrate</span>(X, y)</code></pre></div>
 
 Replace held-out scores and return this predictor for method chaining.
 
@@ -134,7 +137,7 @@ Replace held-out scores and return this predictor for method chaining.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L356">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">evaluate</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L396">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">evaluate</span>(
     X,
     y,
     alpha=0.05,
@@ -173,11 +176,11 @@ Return accuracy, log loss, coverage and prediction set diagnostics.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L186">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L187">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">fit</span>(
     X,
     y,
     auto_calibrate=None,
-    tts_kwargs=None,
+    calibration_splitter=None,
     *,
     sample_weight=None,
     **fit_params,
@@ -191,7 +194,7 @@ Fit a fresh clone; optionally reserve an independent calibration split.
 <dt><code class="api-field-name">X</code> <span class="api-field-type">{array-like, sparse matrix, DataFrame} of shape (n_samples, n_features)</span></dt><dd><p>Feature matrix of shape (n_samples, n_features); dense, sparse, or DataFrame.</p></dd>
 <dt><code class="api-field-name">y</code> <span class="api-field-type">array-like of shape (n_samples,)</span></dt><dd><p>One target per sample; classification labels follow the fitted classes.</p></dd>
 <dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">bool or None, default=None</span></dt><dd><p>Reserve an independent calibration split when fitting.</p></dd>
-<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">TrainTestSplitKwargs or None, default=None</span></dt><dd><p>train_test_split options for this fit; requires automatic calibration. If provided, this mapping replaces the constructor mapping. Missing options use defaults: test_size=0.2, train_size=None, random_state=None, shuffle=True and stratify=None. Set <code>random_state</code> here for reproducible automatic splits.</p></dd>
+<dt><code class="api-field-name">calibration_splitter</code> <span class="api-field-type">object with split(X, y), or None, default=None</span></dt><dd><p>Splitter for this fit; requires automatic calibration. A non-None value replaces the constructor splitter. It must produce exactly one training/calibration split. None uses the constructor value, or the default shuffled 80/20 split.</p></dd>
 <dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">array-like of shape (n_samples,) or None, default=None</span></dt><dd><p>Optional finite, nonnegative weights; fitting or evaluation only, never calibration.</p></dd>
 <dt><code class="api-field-name">**fit_params</code> <span class="api-field-type">dict</span></dt><dd><p>Estimator-specific fit metadata forwarded to the cloned estimator.</p></dd>
 </dl>
@@ -253,7 +256,7 @@ Get parameters for this estimator.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L284">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L324">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict</span>(
     X,
     alpha=0.05,
     *,
@@ -290,7 +293,7 @@ Return point labels, or (boolean membership sets, probabilities).
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L249">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_p_values</span>(X)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L289">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_p_values</span>(X)</code></pre></div>
 
 Return conservative conformal p-values, including calibration ties.
 
@@ -320,7 +323,7 @@ Return conservative conformal p-values, including calibration ties.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L173">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_point</span>(X)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L213">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_point</span>(X)</code></pre></div>
 
 Return the wrapped estimator's labels without calibration.
 
@@ -349,7 +352,7 @@ Return the wrapped estimator's labels without calibration.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L197">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_proba</span>(X)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L237">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_proba</span>(X)</code></pre></div>
 
 Return validated probabilities in classes_ order.
 
@@ -378,7 +381,7 @@ Return validated probabilities in classes_ order.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L220">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_set</span>(X, alpha=0.05)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L260">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">predict_set</span>(X, alpha=0.05)</code></pre></div>
 
 Return a boolean membership matrix of shape (n_samples, n_classes).
 
@@ -409,7 +412,7 @@ Return a boolean membership matrix of shape (n_samples, n_classes).
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L327">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">score</span>(
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/classifier.py#L367">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">score</span>(
     X,
     y,
     sample_weight=None,
@@ -447,8 +450,8 @@ Return point accuracy using point predictions.
 <div class="api-signature"><a class="api-source" href="https://scikit-learn.org/stable/modules/generated/sklearn.base.BaseEstimator.html#sklearn.base.BaseEstimator.set_fit_request">[inherited API]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_fit_request</span>(
     *,
     auto_calibrate=&#x27;$UNCHANGED$&#x27;,
+    calibration_splitter=&#x27;$UNCHANGED$&#x27;,
     sample_weight=&#x27;$UNCHANGED$&#x27;,
-    tts_kwargs=&#x27;$UNCHANGED$&#x27;,
 )</code></pre></div>
 
 Request metadata passed to the `fit` method.
@@ -457,8 +460,8 @@ Request metadata passed to the `fit` method.
 
 <dl class="api-fields">
 <dt><code class="api-field-name">auto_calibrate</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>auto_calibrate</code> parameter in <code>fit</code>.</p></dd>
+<dt><code class="api-field-name">calibration_splitter</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>calibration_splitter</code> parameter in <code>fit</code>.</p></dd>
 <dt><code class="api-field-name">sample_weight</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>sample_weight</code> parameter in <code>fit</code>.</p></dd>
-<dt><code class="api-field-name">tts_kwargs</code> <span class="api-field-type">str, True, False, or None,                     default=sklearn.utils.metadata_routing.UNCHANGED, default=&#x27;$UNCHANGED$&#x27;</span></dt><dd><p>Metadata routing for <code>tts_kwargs</code> parameter in <code>fit</code>.</p></dd>
 </dl>
 
 #### Returns
@@ -473,7 +476,7 @@ Request metadata passed to the `fit` method.
 
 <div class="api-method-body" markdown="1">
 
-<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L137">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
+<div class="api-signature"><a class="api-source" href="https://github.com/JackGreenaway/Conformity/blob/main/src/conformity/base.py#L138">[source]</a><pre><code><span class="api-keyword"></span><span class="api-module"></span><span class="api-name">set_params</span>(**params)</code></pre></div>
 
 Set sklearn parameters and invalidate fitted and calibrated state.
 

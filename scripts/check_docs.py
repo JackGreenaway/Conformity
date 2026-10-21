@@ -18,7 +18,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def check_coverage() -> None:
     """Ensure every exported component, parameter and method is documented."""
-    api = (ROOT / "docs/api.md").read_text()
+    api = "\n".join(
+        path.read_text()
+        for path in [
+            ROOT / "docs/api/metrics.md",
+            *sorted((ROOT / "docs/api/metrics").glob("*.md")),
+        ]
+    )
     for name in conformity.__all__:
         obj = getattr(conformity, name)
         if not re.search(r"\nExamples\n-{3,}\n", inspect.getdoc(obj) or ""):
@@ -33,7 +39,8 @@ def check_coverage() -> None:
             targets = [obj, *public_methods(obj).values()]
         else:
             content = api
-            if f"## {name} {{" not in api:
+            heading = rf"^#{{1,6}} {re.escape(name)} \{{#{re.escape(name.replace('_', '-'))}\}}"
+            if not re.search(heading, api, re.M):
                 raise ValueError(f"Undocumented export: {name}")
             targets = [obj]
         for target in targets:
@@ -64,13 +71,6 @@ def check_coverage() -> None:
                     for attr in getattr(parent, "__annotations__", {}):
                         if attr.endswith("_") and attr not in content:
                             raise ValueError(f"Missing fitted attribute: {name}.{attr}")
-    for filename in ("DOCUMENTATION.md", "THEORY.md"):
-        if (ROOT / filename).read_bytes() != (
-            ROOT / "docs/legacy" / filename
-        ).read_bytes():
-            raise ValueError(
-                f"Preserved guide is stale: {filename}; refresh its docs/legacy copy"
-            )
 
 
 def main() -> None:
@@ -80,48 +80,11 @@ def main() -> None:
     args = parser.parse_args()
     check_coverage()
     count = 0
-    legacy_prelude = """
-import numpy as np
-from sklearn.datasets import make_regression
-from sklearn.linear_model import Ridge
-from sklearn.model_selection import cross_validate
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from conformity import ConformalRegressor
-X_all, y_all = make_regression(n_samples=1200, n_features=4, noise=20, random_state=42)
-X, y = X_all[:1000], y_all[:1000]
-X_new = X_all[1000:1005]
-X_calib, y_calib = X_all[1005:], y_all[1005:]
-pipe = Pipeline([("scaler", StandardScaler()), ("conformal", ConformalRegressor(Ridge(), tts_kwargs={"random_state": 42}))])
-"""
     outputs = {}
     paths = [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]
     with tempfile.TemporaryDirectory(prefix="conformity-docs-") as directory:
         for path in paths:
             content = path.read_text()
-            # Archived snippets use variables and imports from preceding blocks.
-            # Execute the complete page with an explicit synthetic-data fixture.
-            if "legacy" in path.parts:
-                blocks = re.findall(r"```python\n(.*?)```", content, flags=re.S)
-                if blocks:
-                    code = legacy_prelude + "\n" + "\n".join(blocks)
-                    example = Path(directory) / "legacy.py"
-                    example.write_text(code)
-                    result = subprocess.run(
-                        [sys.executable, str(example)],
-                        cwd=directory,
-                        env=dict(os.environ, MPLBACKEND="Agg", MPLCONFIGDIR=directory),
-                        text=True,
-                        capture_output=True,
-                        timeout=120,
-                    )
-                    if result.returncode:
-                        raise ValueError(
-                            f"Archived examples failed in {path}:\n{result.stdout}{result.stderr}"
-                        )
-                    count += len(blocks)
-                continue
-
             for index, transcript in enumerate(
                 re.findall(r"```pycon\n(.*?)```", content, flags=re.S)
             ):
@@ -195,8 +158,6 @@ pipe = Pipeline([("scaler", StandardScaler()), ("conformal", ConformalRegressor(
                     raise ValueError(
                         f"Invalid example in {path}:\n{result.stdout}{result.stderr}"
                     )
-                # Preserve user-written legacy snippets; format only new examples.
-                is_legacy = "legacy" in path.parts
                 formatted = subprocess.run(
                     [
                         sys.executable,
@@ -213,7 +174,7 @@ pipe = Pipeline([("scaler", StandardScaler()), ("conformal", ConformalRegressor(
                     check=True,
                     cwd=ROOT,
                 ).stdout
-                if not is_legacy and not args.format and code != formatted:
+                if not args.format and code != formatted:
                     raise ValueError(f"Unformatted example: {path}; run with --format")
                 example = Path(directory) / "example.py"
                 example.write_text(code)
@@ -251,11 +212,7 @@ pipe = Pipeline([("scaler", StandardScaler()), ("conformal", ConformalRegressor(
                     if args.format:
                         outputs[path] = result.stdout
                 count += 1
-                return (
-                    match[0]
-                    if is_legacy
-                    else f"```python\n{formatted if args.format else code}```"
-                )
+                return f"```python\n{formatted if args.format else code}```"
 
             updated = re.sub(r"```python\n(.*?)```", check, content, flags=re.S)
             if args.format and path in outputs:

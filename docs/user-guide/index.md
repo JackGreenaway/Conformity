@@ -18,4 +18,4 @@ coverage and usefulness on observations used by neither step.
 7. [Plotting](../plotting.md): visualize intervals and investigate missed outcomes.
 
 For complete workflows, visit the [examples gallery](../examples/index.md).
-The [API reference](../api.md) describes callable contracts and fitted state.
+The [API reference](../api/index.md) describes callable contracts and fitted state.

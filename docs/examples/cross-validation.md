@@ -17,7 +17,12 @@ import numpy as np
 from numpy.typing import ArrayLike
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import Ridge
-from sklearn.model_selection import KFold, cross_validate, train_test_split
+from sklearn.model_selection import (
+    KFold,
+    cross_validate,
+    train_test_split,
+    ShuffleSplit,
+)
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -33,7 +38,7 @@ X_calib, X_test, y_calib, y_test = train_test_split(
 # Wrap the whole pipeline here so each automatic fold split precedes scaling.
 model = ConformalRegressor(
     Pipeline([("scaler", StandardScaler()), ("ridge", Ridge())]),
-    tts_kwargs={"random_state": 52},
+    calibration_splitter=ShuffleSplit(n_splits=1, test_size=0.2, random_state=52),
 )
 alpha = 0.1
 fold_splits = list(KFold(3, shuffle=True, random_state=53).split(X, y))
