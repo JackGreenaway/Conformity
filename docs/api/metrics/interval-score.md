@@ -12,6 +12,10 @@
 
 Mean Winkler score: width plus 2/alpha times each missed-bound distance.
 
+## What it tells you
+
+This combines interval width with a penalty for targets outside the interval; alpha controls the penalty. Lower scores balance narrow intervals with fewer or smaller misses. Compare scores at the same alpha.
+
 ## Parameters
 
 <dl class="api-fields">

@@ -1,5 +1,13 @@
 # Calibration and guarantees
 
+## Which conformal method does Conformity implement?
+
+Conformity implements **split conformal prediction (inductive conformal prediction)**. Its automatic workflow splits the supplied data once: it fits the estimator on the training partition and calibrates the fitted model on the held-out partition. The default splitter is `ShuffleSplit(n_splits=1, test_size=0.2)`; pass a different compatible one-split splitter as `calibration_splitter` to control the partition. This is still split conformal prediction, regardless of which splitter you choose.
+
+You can also manage that same split yourself: set `auto_calibrate=False`, call `fit(X_train, y_train)`, then `calibrate(X_calibration, y_calibration)`. Keep final test data separate for evaluation. See [automatic calibration splits](#choosing-a-calibration-size) and [manual calibration](estimators.md#manual-calibration-with-the-complete-pipeline).
+
+Conformity does **not** implement full conformal prediction (transductive conformal prediction). A splitter cannot turn the current API into full conformal: that method must append each candidate outcome to the reference sample, refit the estimator, score the entire augmented sample symmetrically, and calculate a candidate-specific rank p-value. The [theory guide](../theory.md#split-conformal-prediction-inductive-and-full-conformal-prediction-transductive) gives the algorithm sketch and discusses the cost and limits. Both methods' usual finite-sample marginal guarantee relies on exchangeability; chronological splitting alone does not establish it for dependent or drifting time series.
+
 ## Question: what does a 90% interval promise?
 
 Under exchangeability, an independently fitted score function gives marginal coverage at least $1-\alpha$ for a fresh observation. It does not give a 90% probability statement for an already observed interval or guarantee coverage for a selected subgroup.

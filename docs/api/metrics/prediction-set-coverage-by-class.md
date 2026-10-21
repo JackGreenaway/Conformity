@@ -12,6 +12,10 @@
 
 Return empirical set coverage for each represented class.
 
+## What it tells you
+
+For each true class, this shows how often its examples were retained in their prediction sets. It helps reveal uneven empirical performance, but does not create a class-conditional coverage guarantee.
+
 ## Parameters
 
 <dl class="api-fields">

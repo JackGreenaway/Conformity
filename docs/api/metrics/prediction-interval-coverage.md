@@ -11,6 +11,10 @@
 
 Fraction of targets contained in closed prediction intervals.
 
+## What it tells you
+
+This is the share of evaluated targets inside their intervals. It is an empirical test-set summary; a finite test sample can fall below or above the nominal coverage target.
+
 ## Parameters
 
 <dl class="api-fields">

@@ -10,6 +10,10 @@
 
 Mean cardinality (smaller is more efficient at comparable coverage).
 
+## What it tells you
+
+This is the average number of labels offered per example. Smaller sets are more decisive, but compare them alongside coverage so a set is not judged useful just because it leaves labels out.
+
 ## Parameters
 
 <dl class="api-fields">

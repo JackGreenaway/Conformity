@@ -10,6 +10,10 @@
 
 Fraction of empty sets.
 
+## What it tells you
+
+This is how often the predictor offers no candidate label. A high rate means many examples receive no proposed class and may need a fallback or review policy.
+
 ## Parameters
 
 <dl class="api-fields">

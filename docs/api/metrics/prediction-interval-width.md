@@ -10,6 +10,10 @@
 
 Mean interval width; unbounded intervals have infinite width.
 
+## What it tells you
+
+This is the average distance from the lower to upper bound, in the target's original units. Smaller intervals are more precise only when coverage remains adequate; an infinite result means some intervals are unbounded.
+
 ## Parameters
 
 <dl class="api-fields">

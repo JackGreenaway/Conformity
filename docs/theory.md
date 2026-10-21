@@ -2,7 +2,7 @@
 
 ## What problem does conformal prediction solve?
 
-Imagine a robot guessing an answer. We check how wrong it was on examples it did not learn from, then make a “maybe zone” big enough to catch the right answer as often as our chosen target says—if new examples are like the old ones.
+Imagine a robot guessing an answer. We check how wrong it was on examples it did not learn from, then make a “maybe zone” big enough to catch the right answer as often as our chosen target says, if new examples are like the old ones.
 
 A regression model usually returns one number, and a classifier usually returns one label. Neither answer tells you how much uncertainty remains about the next outcome. A prediction interval or a set of plausible labels can make that uncertainty useful for a decision.
 
@@ -262,7 +262,64 @@ For the true label, these values are super-uniform under the same assumptions: t
 
 Validity and usefulness are different questions. At comparable coverage, narrower regression intervals and smaller classification sets are usually more informative. Improving the fitted model can improve efficiency without changing the rank construction. Smaller alpha usually increases region size; it does not repair violated exchangeability assumptions.
 
-Full conformal methods refit or recompute using candidate outcomes; split conformal avoids that cost by reserving calibration data. Other methods, including conformalized quantile regression, CV+, jackknife+ and weighted conformal prediction, use different score functions or calibration protocols. Their guarantees cannot be assumed for this package's current implementations.
+## Split conformal prediction (inductive) and full conformal prediction (transductive)
+
+There are many conformal methods. A basic distinction is between **split conformal prediction**, also called **inductive conformal prediction**, and **full conformal prediction**, also called **transductive conformal prediction**. Conformity currently implements split conformal prediction. Its automatic calibration API chooses one training/calibration split; `calibration_splitter` controls that split. Alternatively, set `auto_calibrate=False`, fit on training data, and call `calibrate` with a separate calibration set. See [calibration workflows](user-guide/calibration.md).
+
+| | Split conformal prediction (implemented here) | Full conformal prediction (not implemented here) |
+| --- | --- | --- |
+| How the model is used | Fit once on the training partition; score the separate calibration partition | For each test input and candidate outcome, refit on the reference data plus that candidate, then score all augmented observations |
+| Main tradeoff | Fast prediction, but some labeled data must be held out for calibration | Uses the labeled reference sample in every candidate check, but prediction can require many model fits |
+| Prediction calculation | One calibrated score threshold produces the region | Include a candidate when its rank-based conformal p-value exceeds `alpha` |
+| Coverage basis | Exchangeability of calibration observations and a fresh observation, conditional on the fitted model | Exchangeability of the full augmented sample and a score calculation that treats its rows symmetrically |
+
+### How a full conformal predictor would work
+
+For a new feature row $x_*$ and a candidate outcome $y_*$, append $(x_*,y_*)$ to the labeled reference data and fit a fresh clone of the estimator on the augmented sample. Compute one nonconformity score for each of its $n+1$ rows, including the candidate row. A conservative p-value is
+
+$$
+p(x_*,y_*) = \frac{1 + \sum_{i=1}^{n} \mathbf{1}\{s_i \geq s_*\}}{n+1},
+$$
+
+where $s_*$ is the candidate row's score and $s_i$ are the reference rows' scores under that same augmented fit. The prediction region contains candidates with $p(x_*,y_*) > \alpha$. The candidate label participates in fitting, so this is not the same as scoring a candidate with a fixed model. The rank argument requires the augmented score procedure to be permutation invariant; model fitting, row ordering, randomization and tie handling must preserve that symmetry.
+
+Simply retraining once on all available labeled observations does not make a split-conformal model into a full-conformal one. If that includes the calibration observations, the model has now trained on the data used to set the old threshold, so that threshold no longer has the usual split-conformal justification. In full conformal prediction, refitting is repeated separately for each test-row/candidate-outcome pair, and every score, including the candidate's, is computed under that augmented fit.
+
+In practice, a user would need to write a separate predictor around their estimator and score function. The following is Python-shaped pseudocode for classification; `score_rows` must compute the chosen nonconformity scores for every row under the same augmented fit:
+
+```python
+for x in X_test:
+    prediction_set = []
+    for candidate_label in classes:
+        X_augmented, y_augmented = append_candidate(X_reference, y_reference, x, candidate_label)
+        model = clone(estimator).fit(X_augmented, y_augmented)
+        scores = score_rows(model, X_augmented, y_augmented)
+        candidate_score = scores[-1]
+        p_value = (1 + count(scores[:-1] >= candidate_score)) / len(scores)
+        if p_value > alpha:
+            prediction_set.append(candidate_label)
+```
+
+This is an algorithm sketch, not a Conformity method: `clone`, `append_candidate` and `score_rows` need to be supplied, and production code must handle ties and estimator randomness in a permutation-symmetric way. For split conformal, users do not need to write a new predictor: the supported automatic and manual workflows are documented in the [calibration guide](user-guide/calibration.md).
+
+### What would change in Conformity
+
+The current `BaseConformalPredictor` lifecycle fits once, stores held-out scores in `calibrate`, then answers queries using a cached threshold. Full conformal has no separate calibration-score array or one-time threshold, so it should use a separate predictor base or an explicit strategy with its own fit and prediction path. A full-conformal implementation would need to:
+
+1. Store the labeled reference sample at fit time and clone the estimator for each candidate check.
+2. Build the augmented data and refit for each test-row/candidate-outcome pair.
+3. Compute comparable scores for every augmented row and derive the candidate's rank p-value.
+4. Add tests that check row-order symmetry, inclusive tie handling, finite-sample coverage in exchangeable simulations, estimator cloning and fit counts.
+
+Classification is the simplest first implementation: for each test row, evaluate each label in the finite fitted class list. With $m$ test rows and $K$ classes, this takes roughly $mK$ model fits. Regression outcomes form a continuous space, so evaluating a finite grid only approximates the prediction region and does not by itself preserve the exact coverage guarantee. Exact interval output needs an estimator-specific way to find the full set of accepted candidate values, including potentially disjoint regions. A generic full-regression API should wait until that search is specified.
+
+### Is full conformal prediction used in practice?
+
+Yes. Full conformal prediction is the original, principled construction and remains useful when datasets are small, model fitting is inexpensive, or keeping every labeled example in the reference sample matters. It also serves as a benchmark for methods that approximate its candidate-specific refits. Researchers have studied ways to approximate it at scale, including influence-function methods, because the direct procedure can be too costly for large models or many test inputs ([Guan, 2023](https://ojs.aaai.org/index.php/AAAI/article/view/25814)).
+
+Using all available labeled examples in each candidate check can avoid reserving a separate calibration partition, but it does not guarantee narrower or more useful prediction regions than split conformal. The direct computation can be expensive, and approximations or shortcuts need their own analysis: a grid search over regression outcomes, for example, does not automatically inherit the exact full-conformal guarantee. For many production settings, split conformal is a practical choice because it calibrates once and predicts cheaply. Full conformal is a reasonable choice when its data-use benefit justifies its inference cost and the candidate search can be carried out with the required symmetry.
+
+Both methods rely on exchangeability for their usual finite-sample marginal coverage result. Neither generally promises coverage conditional on each particular feature value or subgroup, and neither fixes distribution shift or temporal dependence by itself. Split conformal trades away some observations for a single fit and fast prediction. Full conformal avoids a fixed calibration holdout but can require one refit for every test-row/candidate pair; classifier cost is roughly the number of test rows times the number of classes. A finite grid over continuous regression outcomes only approximates the accepted region and does not automatically retain the exact guarantee. Other approaches such as CV+, jackknife+, conformalized quantile regression and weighted conformal prediction have their own algorithms and assumptions. None of those guarantees follows from the package's current split-conformal implementation. See [Lei et al.](https://arxiv.org/abs/1604.04173) for a formal comparison of full and split conformal regression.
 
 Run the [regression](examples/regression.md) or [classification](examples/classification.md) example, then inspect [coverage and efficiency diagnostics](user-guide/diagnostics.md).
 

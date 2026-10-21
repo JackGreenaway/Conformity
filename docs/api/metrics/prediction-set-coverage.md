@@ -12,6 +12,10 @@
 
 Fraction of sets containing the true class; supports arbitrary labels.
 
+## What it tells you
+
+On the evaluated examples, this is the share whose true label appears in the returned set. It summarizes overall set coverage; it does not promise that this particular finite batch reaches the requested target.
+
 ## Parameters
 
 <dl class="api-fields">

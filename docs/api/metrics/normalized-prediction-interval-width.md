@@ -11,6 +11,10 @@
 
 Mean interval width divided by the target's interquartile range.
 
+## What it tells you
+
+This expresses average interval width relative to the test targets' interquartile range, making widths easier to compare across target scales. It measures size, not coverage, and is infinite when the IQR is zero.
+
 ## Parameters
 
 <dl class="api-fields">

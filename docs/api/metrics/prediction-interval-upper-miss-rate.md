@@ -11,6 +11,10 @@
 
 Fraction of targets above their closed prediction intervals.
 
+## What it tells you
+
+This is how often the true target falls above the interval. It reveals misses on the high side; for equal-tail asymmetric intervals, compare it with alpha / 2 as a noisy diagnostic.
+
 ## Parameters
 
 <dl class="api-fields">

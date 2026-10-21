@@ -10,6 +10,10 @@
 
 Fraction of sets containing exactly one label.
 
+## What it tells you
+
+This is how often exactly one label is offered. It measures how often the prediction is decisive, not how often that single label is correct.
+
 ## Parameters
 
 <dl class="api-fields">

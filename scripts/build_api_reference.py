@@ -36,6 +36,64 @@ METRIC_GROUPS = {
         "interval_score",
     ),
 }
+METRIC_INTERPRETATIONS = {
+    "prediction_set_coverage": (
+        "On the evaluated examples, this is the share whose true label appears in "
+        "the returned set. It summarizes overall set coverage; it does not promise "
+        "that this particular finite batch reaches the requested target."
+    ),
+    "prediction_set_coverage_by_class": (
+        "For each true class, this shows how often its examples were retained in "
+        "their prediction sets. It helps reveal uneven empirical performance, but "
+        "does not create a class-conditional coverage guarantee."
+    ),
+    "prediction_set_size": (
+        "This is the average number of labels offered per example. Smaller sets "
+        "are more decisive, but compare them alongside coverage so a set is not "
+        "judged useful just because it leaves labels out."
+    ),
+    "prediction_set_empty_rate": (
+        "This is how often the predictor offers no candidate label. A high rate "
+        "means many examples receive no proposed class and may need a fallback "
+        "or review policy."
+    ),
+    "prediction_set_singleton_rate": (
+        "This is how often exactly one label is offered. It measures how often "
+        "the prediction is decisive, not how often that single label is correct."
+    ),
+    "prediction_interval_coverage": (
+        "This is the share of evaluated targets inside their intervals. It is an "
+        "empirical test-set summary; a finite test sample can fall below or above "
+        "the nominal coverage target."
+    ),
+    "prediction_interval_lower_miss_rate": (
+        "This is how often the true target falls below the interval. It reveals "
+        "misses on the low side; for equal-tail asymmetric intervals, compare it "
+        "with alpha / 2 as a noisy diagnostic."
+    ),
+    "prediction_interval_upper_miss_rate": (
+        "This is how often the true target falls above the interval. It reveals "
+        "misses on the high side; for equal-tail asymmetric intervals, compare it "
+        "with alpha / 2 as a noisy diagnostic."
+    ),
+    "prediction_interval_width": (
+        "This is the average distance from the lower to upper bound, in the "
+        "target's original units. Smaller intervals are more precise only when "
+        "coverage remains adequate; an infinite result means some intervals are "
+        "unbounded."
+    ),
+    "normalized_prediction_interval_width": (
+        "This expresses average interval width relative to the test targets' "
+        "interquartile range, making widths easier to compare across target "
+        "scales. It measures size, not coverage, and is infinite when the IQR is "
+        "zero."
+    ),
+    "interval_score": (
+        "This combines interval width with a penalty for targets outside the "
+        "interval; alpha controls the penalty. Lower scores balance narrow "
+        "intervals with fewer or smaller misses. Compare scores at the same alpha."
+    ),
+}
 
 
 def signature(obj: Callable[..., Any]) -> str:
@@ -230,6 +288,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
+    metric_names = {name for names in METRIC_GROUPS.values() for name in names}
+    if metric_names != set(METRIC_INTERPRETATIONS):
+        raise ValueError(
+            "Every documented metric must have a conceptual interpretation"
+        )
     for name, slug in CLASSES.items():
         path = ROOT / "docs" / "classes" / f"{slug}.md"
         content = path.read_text()
@@ -262,11 +325,13 @@ def main() -> None:
             summary = (inspect.getdoc(obj) or "").split("\n\n", 1)[0].replace("\n", " ")
             blocks.append(f"| [`{name}`](metrics/{slug}.md) | {summary} |")
             page_path = metric_pages / f"{slug}.md"
+            interpretation = METRIC_INTERPRETATIONS[name]
             page = (
                 f"# {name} {{#{slug}}}\n\n"
                 f"[Metrics overview](../metrics.md)\n\n"
                 f"{signature_block(obj, name)}\n"
                 f"{summary}\n\n"
+                f"## What it tells you\n\n{interpretation}\n\n"
                 f"{render_doc(inspect.getdoc(obj) or '', 2, include_summary=False, include_examples=True, obj=obj)}"
             )
             page = page.rstrip() + "\n"
